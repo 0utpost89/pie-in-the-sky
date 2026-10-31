@@ -2546,20 +2546,58 @@ function drawFood(kind, x, y, rot, s) {
   ctx.strokeStyle = OUT; ctx.lineWidth = 2;
   switch (kind) {
     case 'porkpie': {
-      ctx.fillStyle = '#c8823a'; roundRect(ctx, -13, -6, 26, 16, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#f0b860'; ctx.beginPath(); ctx.ellipse(0, -6, 13, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#ffd38a';
-      for (let k = 0; k < 9; k++) { const a = k / 9 * TAU; ctx.beginPath(); ctx.arc(Math.cos(a) * 11.5, -6 + Math.sin(a) * 4.2, 1.8, 0, TAU); ctx.fill(); }
-      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(-10, -1, 3, 8);
+      // A pork pie cut in half, seen from the front: the back half of the
+      // crimped lid, and the cut face showing crust, jelly and pink meat.
+      const R = 13, RY = 5, TOP = -4, H = 15;
+      // back half of the lid
+      ctx.fillStyle = '#e8ad55';
+      ctx.beginPath(); ctx.ellipse(0, TOP, R, RY, 0, Math.PI, TAU); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#f6c977';
+      for (let k = 0; k <= 8; k++) {
+        const a = Math.PI + 0.2 + k / 8 * (Math.PI - 0.4);
+        ctx.beginPath(); ctx.arc(Math.cos(a) * R * 0.9, TOP + Math.sin(a) * RY * 0.75, 1.5, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = '#c9823a'; ctx.beginPath(); ctx.ellipse(-2, TOP - 2.6, 3, 1.1, -0.2, 0, TAU); ctx.fill();
+      // the cut face
+      ctx.fillStyle = '#c9823a'; roundRect(ctx, -R, TOP, R * 2, H, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#f2d36b'; roundRect(ctx, -R + 2.6, TOP + 2.6, R * 2 - 5.2, H - 5, 3); ctx.fill();
+      ctx.fillStyle = '#ef9a9a'; roundRect(ctx, -R + 4.6, TOP + 4.6, R * 2 - 9.2, H - 8.6, 2.5); ctx.fill();
+      ctx.fillStyle = '#c96f78';
+      [[-5, 3], [-1, 5.5], [3, 2.5], [5.5, 6], [1, 8]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 0.9, 0, TAU); ctx.fill(); });
+      ctx.fillStyle = 'rgba(255,240,200,0.4)'; roundRect(ctx, -R + 0.8, TOP + 3, 1.4, H - 7, 0.7); ctx.fill();
       break;
     }
     case 'sausageroll': {
-      ctx.rotate(-0.2);
-      ctx.fillStyle = '#e8a650'; roundRect(ctx, -15, -7, 30, 14, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#c86a4a'; ctx.beginPath(); ctx.ellipse(15, 0, 3, 5.5, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = '#b87830'; ctx.lineWidth = 1.4;
-      ctx.beginPath(); for (let k = -9; k <= 9; k += 6) { ctx.moveTo(k - 2, -6); ctx.lineTo(k + 2, -1); } ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; roundRect(ctx, -11, -5, 16, 2.5, 1.2); ctx.fill();
+      // Flaky puff pastry wrapped round sausage meat, scored on top,
+      // with the open end showing the meat inside the pastry layers.
+      ctx.rotate(-0.12);
+      const g = ctx.createLinearGradient(0, -8, 0, 8);
+      g.addColorStop(0, '#f2c46a'); g.addColorStop(0.55, '#e0a04a'); g.addColorStop(1, '#c07a34');
+      ctx.fillStyle = g;
+      // slightly lumpy top edge so it looks puffed
+      ctx.beginPath(); ctx.moveTo(-15, -3);
+      ctx.quadraticCurveTo(-15, -8, -10, -8);
+      ctx.quadraticCurveTo(-5, -9.2, 0, -8.2); ctx.quadraticCurveTo(5, -9.2, 10, -8);
+      ctx.lineTo(11, -8); ctx.lineTo(11, 8); ctx.lineTo(-11, 8);
+      ctx.quadraticCurveTo(-15, 8, -15, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+      // flaky layers along the bottom
+      ctx.strokeStyle = 'rgba(255,236,190,0.75)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const yy of [4, 6]) { ctx.moveTo(-12, yy); for (let xx = -12; xx <= 9; xx += 3) ctx.quadraticCurveTo(xx + 1.5, yy - 0.8, xx + 3, yy); }
+      ctx.stroke();
+      // three diagonal score marks across the top
+      ctx.lineWidth = 1.8; ctx.strokeStyle = '#8a4a1e';
+      ctx.beginPath(); for (const k of [-8, -2, 4]) { ctx.moveTo(k - 1.5, -7.2); ctx.lineTo(k + 2.5, -1.5); } ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,236,190,0.7)';
+      ctx.beginPath(); for (const k of [-8, -2, 4]) { ctx.moveTo(k - 0.4, -7.2); ctx.lineTo(k + 3.4, -2); } ctx.stroke();
+      // the open end: rings of pastry with the meat in the middle
+      ctx.lineWidth = 2; ctx.strokeStyle = OUT;
+      ctx.fillStyle = '#f6dfa0'; ctx.beginPath(); ctx.ellipse(11, 0, 5, 8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#d9a95a'; ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.ellipse(11, 0, 3.9, 6.6, 0, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#b97a5c'; ctx.beginPath(); ctx.ellipse(11, 0.3, 2.9, 5.1, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#e3a08a'; [[10.2, -2.2], [12, 1], [10.6, 2.8]].forEach(([a, b]) => { ctx.beginPath(); ctx.arc(a, b, 0.8, 0, TAU); ctx.fill(); });
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; roundRect(ctx, -11, -6, 8, 2, 1); ctx.fill();
       break;
     }
     case 'pizza': {
