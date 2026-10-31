@@ -1,6 +1,6 @@
 # Pie in the Sky
 
-An endless vertical jumper. A hungry little ginger kitten bounces up from a city back yard, through the clouds, past the edge of space and into black holes that lead to other universes, eating every pie, sausage roll and pizza slice along the way.
+An endless vertical jumper. A hungry little ginger kitten bounces up from a city back yard, through the clouds, past the edge of space and into black holes that lead to other universes, eating every fish and pizza slice (and the odd bag of catnip) along the way, and chasing any laser pointer she finds.
 
 Everything is in one `index.html`: the art is drawn with canvas shapes, the sounds and music are made with the Web Audio API, and there are no external assets or libraries.
 
@@ -20,13 +20,14 @@ Everything is in one `index.html`: the art is drawn with canvas shapes, the soun
 
 The kitten bounces by itself. Your high score and the furthest universe you reached are saved in your browser.
 
-## Food
+## Food (and toys)
 
-- **Pork pie:** three bigger bounces
-- **Sausage roll:** a pastry shield for a few seconds
+- **Fish:** three bigger bounces
+- **Bag of catnip:** catnip bliss, a shield that blocks pensioners and seagulls for a few seconds
 - **Pizza:** a rush straight upward
+- **Laser pointer** (rarer): a red dot zips up the screen and the kitten chases it, weaving side to side and ignoring hazards, for about two seconds
 
-Every snack makes her belly bigger: more points per snack, but more gravity, so the jumps get lower. The belly goes down over time (one level every 10 seconds, with a burp).
+Every snack makes her belly bigger: more points per snack, but more gravity, so the jumps get lower. The belly goes down over time (one level every 10 seconds, with a burp). The laser pointer is a toy, not food, so it doesn't fill the belly.
 
 ## Platforms
 
@@ -55,4 +56,4 @@ Drift into the middle of a black hole to go through to **Universe 2 (Pork Pie Wo
 
 ## Tweaking
 
-Zone heights, gravity, jump speed, belly, food, hazard and black-hole settings are in the `CONFIG` object at the top of the script. How hard each zone gets is in `PROFILES` just below it.
+Zone heights, gravity, jump speed, belly, food, laser, hazard and black-hole settings are in the `CONFIG` object at the top of the script. How hard each zone gets is in `PROFILES` just below it.
