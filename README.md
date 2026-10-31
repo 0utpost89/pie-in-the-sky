@@ -1,6 +1,6 @@
-# Pie in the Sky
+# Sky Scratcher
 
-An endless vertical jumper. A hungry little ginger kitten bounces up from a city back yard, through the clouds, past the edge of space and into black holes that lead to other universes, eating every fish and pizza slice (and the odd bag of catnip) along the way, and chasing any laser pointer she finds.
+An endless vertical jumper. A curious little ginger kitten bounces up from a city back yard, through the clouds, past the edge of space and into black holes that lead to other universes. On the way she catches mice, chases laser dots and dodges dogs, stray tomcats and food-pinching seagulls.
 
 Everything is in one `index.html`: the art is drawn with canvas shapes, the sounds and music are made with the Web Audio API, and there are no external assets or libraries.
 
@@ -20,28 +20,33 @@ Everything is in one `index.html`: the art is drawn with canvas shapes, the soun
 
 The kitten bounces by itself. Your high score and the furthest universe you reached are saved in your browser.
 
-## Food (and toys)
+## Pickups
 
 - **Fish:** three bigger bounces
-- **Bag of catnip:** catnip bliss, a shield that blocks pensioners and seagulls for a few seconds
-- **Pizza:** a rush straight upward
+- **Bag of catnip:** catnip zoomies, a rush straight upward
 - **Laser pointer** (rarer): a red dot zips up the screen and the kitten chases it, weaving side to side and ignoring hazards, for about two seconds
 
-Every snack makes her belly bigger: more points per snack, but more gravity, so the jumps get lower. The belly goes down over time (one level every 10 seconds, with a burp). The laser pointer is a toy, not food, so it doesn't fill the belly.
+Fish and catnip fill her belly: more points per snack, but more gravity, so the jumps get lower. The belly goes down over time (one level every 10 seconds, with a burp). The laser pointer is a toy, so it doesn't fill the belly.
+
+## Mice
+
+Mice potter along some platforms. Run into one to catch it for points (worth more with a fuller belly). They squeak and scarper when she gets close, so corner them at the end of a platform.
 
 ## Platforms
 
 Every zone has the same four kinds, so you can read them at speed:
 
 - **Standard:** flat and solid
-- **Bouncy:** a pink-trimmed dome that squashes and launches you higher
+- **Bouncy:** a dome (grass tuft, ball of wool, tennis ball...) that squashes and launches you higher
 - **Moving:** has little cyan arrows at each end
-- **Breakable:** cracked with a dashed outline, crumbles after one landing
+- **Breakable:** dashed outline, crumbles after one landing
 
-## Hazards
+## Enemies
 
-- **Pensioners** shuffling along with walking sticks, on mobility scooters, in hot-air balloons and on jet-powered zimmer frames. Bump into one and you get knocked down ("In my day...").
-- **Seagulls** swoop in to nick the food. Bounce on their heads to bop them.
+- **Dogs:** terriers and bulldogs trotting along platforms. Bump into one and you get knocked down ("SQUIRREL?!").
+- **Stray tomcats:** scruffy, one-eyed and very territorial. Same deal.
+- **Dogs in hot-air balloons** in the sky, and **jetpack space dogs** in space.
+- **Seagulls** swoop in to nick your food (and a belly level). Bounce on their heads to bop them.
 - **UFOs** switch on a tractor beam if you hang around them.
 
 ## Zones and universes
@@ -52,8 +57,8 @@ Every zone has the same four kinds, so you can read them at speed:
 4. Deep Space (4,500 to 7,000m)
 5. The Black Hole Belt (7,000m onward)
 
-Drift into the middle of a black hole to go through to **Universe 2 (Pork Pie World)**, then **Universe 3 (Pizza World)**, and round again.
+Drift into the middle of a black hole to go through to **Universe 2 (Yarn World)**, where she wears a bobble hat and the platforms are scarves, balls of wool and knitting needles. The next black hole leads to **Universe 3 (Dog World)**, where she goes undercover in a pair of floppy dog ears among kennels, tennis balls and frisbees. Then it's round again.
 
 ## Tweaking
 
-Zone heights, gravity, jump speed, belly, food, laser, hazard and black-hole settings are in the `CONFIG` object at the top of the script. How hard each zone gets is in `PROFILES` just below it.
+Zone heights, gravity, jump speed, belly, pickups, laser, mice, hazard and black-hole settings are in the `CONFIG` object at the top of the script. How hard each zone gets is in `PROFILES` just below it. Pickup odds are in `PICKUPS`.

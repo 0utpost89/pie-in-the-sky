@@ -6,9 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a1430">
-<meta name="apple-mobile-web-app-title" content="Pie in the Sky">
+<meta name="apple-mobile-web-app-title" content="Sky Scratcher">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Pie in the Sky</title>
+<title>Sky Scratcher</title>
 <style>
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
@@ -22,15 +22,15 @@
 </style>
 </head>
 <body>
-<canvas id="game" tabindex="0" aria-label="Pie in the Sky game"></canvas>
+<canvas id="game" tabindex="0" aria-label="Sky Scratcher game"></canvas>
 <script>
 'use strict';
 
 /* =====================================================================
-   PIE IN THE SKY
-   A hungry little kitten bounces endlessly upward from her
-   back garden to the edge of space and beyond, eating everything he
-   finds. Everything is drawn with canvas shapes and every sound is
+   SKY SCRATCHER
+   A curious little kitten bounces endlessly upward from her
+   back yard to the edge of space and beyond, catching mice, chasing
+   laser dots and dodging dogs. Everything is drawn with canvas shapes and every sound is
    synthesised with the Web Audio API. No external assets.
 
    Sections:
@@ -84,10 +84,10 @@ const CONFIG = {
   // Alternate universes
   altHolesAfter: 2500,     // metres into universe 2+ before black holes appear
   universes: [
-    // gravity and jump multipliers: Pork Pie World is heavier and denser
+    // gravity and jump multipliers: Dog World is heavier and denser
     { theme: 'human', gravityMul: 1,    jumpMul: 1 },
-    { theme: 'pie',   gravityMul: 1.24, jumpMul: 1.14 },
-    { theme: 'pizza', gravityMul: 0.96, jumpMul: 1.0 },
+    { theme: 'yarn',  gravityMul: 0.96, jumpMul: 1.0 },
+    { theme: 'dog',   gravityMul: 1.24, jumpMul: 1.14 },
   ],
 
   // Belly: each food makes it bigger. Bigger belly = more points, more gravity.
@@ -101,18 +101,22 @@ const CONFIG = {
   // Food
   foodPoints: 50,
   foodChance: 0.2,         // chance of a food item per platform generated
-  rushTime: 0.8,           // pizza: seconds of upward rush...
+  rushTime: 0.8,           // catnip: seconds of upward rush...
   rushSpeed: 1050,         // ...at this speed
   rushSideMul: 1.35,       // ...and quicker sideways movement
   bigBounces: 3,           // fish: this many bigger bounces...
   bigBounceMul: 1.3,       // ...this much higher
-  shieldTime: 6,           // catnip: seconds of shield
   laserTime: 2.2,          // laser pointer: seconds chasing the red dot...
   laserSpeed: 860,         // ...climbing at this speed
   laserLead: 150,          // ...with the dot this far ahead of her
 
+  // Mice: they scurry along platforms; catch one for points
+  mouseChance: 0.12,       // chance of a mouse on a free platform
+  mousePoints: 75,         // x the belly multiplier, like food
+  mouseFleeSpeed: 70,      // how fast they run when she gets close
+
   // Hazards
-  knockDown: 380,          // downward speed after bumping into a pensioner
+  knockDown: 380,          // downward speed after bumping into a dog or a tomcat
   knockSide: 300,
   knockGrace: 1.2,         // seconds before the next knock can happen
   gullSpeed: 175,
@@ -178,6 +182,7 @@ function roundRect(c, x, y, w, h, r) {
   c.closePath();
 }
 
+// (Saved keys keep their old 'pieSky.' prefix so existing high scores carry over.)
 // localStorage can throw (private mode, blocked storage) so wrap it.
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
@@ -296,7 +301,7 @@ const Sound = {
     this.noise(0.25, 900, 0.45, 0, 'lowpass', 1, 250);
     for (let i = 0; i < 5; i++) this.noise(0.04, rand(1500, 3500), 0.18, i * rand(0.03, 0.06), 'bandpass', 3);
   },
-  crunch() {                                            // biting into pastry
+  crunch() {                                            // a good crunchy bite
     for (let i = 0; i < 4; i++) this.noise(0.05, rand(2500, 5000), 0.35 - i * 0.05, i * rand(0.045, 0.07), 'bandpass', 1.4);
     this.tone(140, 0.07, 'square', 0.05, 0, 90);
   },
@@ -347,8 +352,7 @@ const Sound = {
     this.noise(0.15, 2500, 0.1, 0, 'bandpass', 2);
   },
   bop() { this.tone(520, 0.12, 'square', 0.1, 0, 1040); this.noise(0.08, 3000, 0.2, 0, 'highpass'); },
-  shieldUp() { [523, 659, 784].forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.12, i * 0.06)); },
-  shieldBlock() { this.tone(900, 0.12, 'triangle', 0.14, 0, 1500); this.noise(0.08, 4000, 0.15, 0, 'highpass'); },
+  squeak() { this.tone(2200, 0.06, 'square', 0.04, 0, 2800); this.tone(2600, 0.07, 'square', 0.035, 0.07, 3200); },
   rush() { this.noise(0.6, 400, 0.4, 0, 'bandpass', 1.2, 3000); this.tone(200, 0.5, 'sawtooth', 0.06, 0, 800); },
   laser() { this.tone(1800, 0.25, 'sine', 0.08, 0, 2600); this.tone(2400, 0.12, 'square', 0.03, 0.08, 1600); },
   power() { [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.1, 'square', 0.05, i * 0.05)); },
@@ -415,11 +419,11 @@ const SONG = (() => {
   ];
   return [].concat(A, B, A, B);
 })();
-// Each universe gets its own band: a cornet, a pie-shop organ, a mandolin.
+// Each universe gets its own band: a cornet, a cosy organ, a jaunty mandolin.
 const BANDS = {
   human: { transpose: 0, lead: 'cornet', bpm: 132 },
-  pie:   { transpose: -5, lead: 'organ', bpm: 118 },
-  pizza: { transpose: 2, lead: 'mandolin', bpm: 140 },
+  yarn:  { transpose: -5, lead: 'organ', bpm: 118 },
+  dog:   { transpose: 2, lead: 'mandolin', bpm: 140 },
 };
 
 const Music = {
@@ -603,13 +607,13 @@ const RANKS = [
   [100,   'Alley Cat'],
   [400,   'Bin Lid Bouncer'],
   [1000,  'Cloud Botherer'],
-  [1800,  'Pie in the Sky'],
-  [2500,  'Space Snacker'],
-  [4500,  'Cosmic Cornish Pasty'],
-  [7000,  'Black Hole Glutton'],
-  [9000,  'Pork Pie Pioneer'],
-  [13000, 'Pizza Overlord'],
-  [20000, 'Lord of All Pastries'],
+  [1800,  'Sky Scratcher'],
+  [2500,  'Space Kitten'],
+  [4500,  'Cosmic Mouser'],
+  [7000,  'Black Hole Prowler'],
+  [9000,  'Yarn Wrangler'],
+  [13000, 'Top Dog (Secretly a Cat)'],
+  [20000, 'Ruler of All Cats'],
 ];
 function rankIndex(m) {
   let r = 0;
@@ -619,9 +623,8 @@ function rankIndex(m) {
 
 const MESSAGES = {
   any: [
-    'Gravity: 1, Pizza: 0.',
+    'Gravity: 1, Kitten: 0.',
     'What goes up must come down. Cats included.',
-    'Pie in the sky? Pie on the floor.',
     'Down like a dropped fish finger.',
     'Last seen heading for the chippy.',
     'Not quite nine lives\' worth of luck.',
@@ -630,37 +633,35 @@ const MESSAGES = {
     'Gravity remains undefeated.',
     'Always lands on its feet. Usually.',
     'Gone for a little lie down.',
-    'Well, that was a bit of a pickle.',
+    'Eight lives left. Probably.',
+    'Time for a nap anyway.',
   ],
-  belly: ['That last {food} was the heavy one.', 'Too full to fly.', 'The belly has spoken.', 'One pie too many. As if there is such a thing.'],
-  space: ['In space, no one can hear you land on your bum.', 'Houston, we have a pie problem.', 'One small step for cat. One big fall for a kitten.'],
-  pie: ['Pastry-cated.', 'Crumbs.', 'A bit of a soggy bottom.', 'Pie-ty about that.'],
-  pizza: ["That's amore. (That's a fall.)", 'Deep pan, deep trouble.', 'Delivered. Downwards.', 'Extra cheese, extra falling.'],
-  knocked: ['Knocked off by a pensioner. Classic.', 'Outmanoeuvred by the over-70s.', 'Respect your elders. And their sticks.', 'They were here first, to be fair.'],
+  belly: ['That last {food} was the heavy one.', 'Too full to fly.', 'The belly has spoken.', 'One fish too many. As if there is such a thing.'],
+  space: ['In space, no one can hear you land on your bum.', 'Houston, we have a hairball.', 'One small step for cat. One big fall for a kitten.'],
+  yarn: ['Completely unravelled.', 'Lost the thread.', 'Tangled up in it.', 'Knot again.'],
+  dog: ['The disguise slipped.', 'Rumbled by a sniff.', 'Barked off the sky.', 'Not even a good boy could help.'],
+  knocked: ['Knocked off by a dog. How embarrassing.', 'That tomcat runs this street.', 'Outwitted by a dog. Never live it down.', 'They were here first, to be fair.'],
   gull: ['The seagull got the fish AND the dignity.', 'Never trust a seagull.', 'Mugged by a gull. Very British.'],
 };
 
 const GRUMBLES = {
-  pensioner: ['In my day...', 'In my day we walked to space!', 'Mind my hip!', 'Young people!', 'In my day pies were tuppence!', "I'm writing to the council!", 'In my day we had proper gravity!'],
-  scooter:   ['Beep beep, sonny!', 'In my day we had brakes!', 'Mind my lane!', 'In my day...'],
-  balloon:   ['In my day balloons had manners!', 'Mind the basket!', 'In my day...', 'Get off my cloud!'],
-  jetzimmer: ['In my day space was quieter!', "Zimmers don't have brakes, dear!", 'In my day...', 'Mind the jet, love!'],
-  queue:     ["Oi! There's a queue!", 'In my day pies had more meat!', 'Back of the line!', 'In my day...'],
-  snail:     ['In my day... we took... our time.', 'Mind... the... shell...', 'In... my... day...'],
-  potsnail:  ['In my day... teapots... were slower...', 'Mind... my... brew...'],
-  nonna:     ['Ai miei tempi...', "Mangia! You're too thin!", 'In my day, no pineapple!', 'Mamma mia!'],
-  vespa:     ['Beep beep! Ciao!', 'In my day, no traffic!', 'Mamma mia!'],
-  pizzaballoon: ['In my day...', 'Mangia, mangia!', 'Mind the oregano!'],
+  dog:        ['WOOF!', 'BARK BARK!', 'GRRR!', 'SQUIRREL?!', 'Who let the cat out?', 'Is that a cat?! CAT!'],
+  bulldog:    ['GRRRUMPH.', 'Move it, fluffball.', 'WOOF.', 'My platform.'],
+  tomcat:     ['HISSSS!', 'My patch, kid.', 'Scram!', 'MRROWL!', 'This is my bin lid.'],
+  dogballoon: ['WOOF! Up here!', 'Bark from above!', 'Look, no paws!', 'GRRR!'],
+  spacedog:   ['WOOF... in SPACE!', 'Good boy, reporting for duty!', 'Fetch the moon!', 'BARK!'],
 };
+const MOUSE_LINES = ['GOTCHA!', 'POUNCE!', 'CAUGHT ONE!', 'MOUSED!'];
+const SQUEAKS = ['Eek!', 'Squeak!', 'Not the whiskers!'];
 const GULL_LINES = ['MINE!', 'SQUAWK!', 'Mine mine mine!', 'Cheers, mate!', 'Nicked it!'];
 const BOP_LINES = ['BOP!', 'BONK!', 'Oof!', 'SQUARK!'];
 const MUNCH_WORDS = ['NOM!', 'MUNCH!', 'CHOMP!', 'SCOFF!', 'GOBBLE!', 'YUM!'];
 const SLURP_WORDS = ['SLURP!', 'GLUG!', 'AHHH!'];
 
 const SAYINGS = {
-  human: ['Mrow?', 'Purrfect.', 'Ooh, is that a fish?', 'I could murder a kipper.', 'Just one more fish.', 'Is that... a red dot?', 'Never skip elevenses.', 'Is the moon made of tuna?'],
-  pie:   ['Nice hat, me.', 'Is my hat... edible?', 'Purrk pie!', 'Feeling a bit flaky.', 'Who ate all the... oh.'],
-  pizza: ['Bellissimo!', 'I feel... saucy.', 'Extra cheese, please.', 'Is it hot in here?', 'Deep pan? Deep thoughts.'],
+  human: ['Mrow?', 'Purrfect.', 'Ooh, is that a fish?', 'I could murder a kipper.', 'Is that... a red dot?', 'I smell mouse.', 'Is the moon made of tuna?', 'Must. Climb. Curtains.'],
+  yarn:  ['So. Much. String.', 'Must... not... unravel.', 'Is that the end of the thread?', 'Comfiest world ever.', 'Nice hat, me.'],
+  dog:   ['I am in disguise.', 'Woof? ...Woof.', 'Nobody sniff me.', 'Must blend in.', 'Who\'s a good boy? Not me.'],
 };
 
 /* ---------------------------------------------------------------------
@@ -694,62 +695,52 @@ const PROFILES = {
 };
 
 const Z = CONFIG.zones;
+const PICKUPS = [['fish', 0.42], ['catnip', 0.42], ['laser', 0.16]];
 const THEMES = {
   human: {
-    name: 'Universe 1', title: 'The Human',
-    foods: [['fish', 0.37], ['catnip', 0.32], ['pizza', 0.23], ['laser', 0.08]],
+    name: 'Universe 1', title: 'The Human World',
+    foods: PICKUPS,
     zones: [
       { id: 'garden', name: 'The Back Yard', start: Z.garden, look: 'garden', profile: PROFILES.garden, gravityMul: 1,
-        bg: ['#5b4a9e', '#ff9e7a'], walkers: ['pensioner', 'scooter'], floater: null },
+        bg: ['#5b4a9e', '#ff9e7a'], walkers: ['dog', 'tomcat'], floater: null },
       { id: 'sky', name: 'The Sky', start: Z.sky, look: 'sky', profile: PROFILES.sky, gravityMul: 1,
-        bg: ['#3f4fae', '#b49be6'], walkers: ['pensioner'], floater: 'balloon', walkOnMoving: true },
+        bg: ['#3f4fae', '#b49be6'], walkers: ['tomcat'], floater: 'dogballoon', walkOnMoving: true },
       { id: 'edge', name: 'The Edge of Space', start: Z.edge, look: 'edge', profile: PROFILES.edge, gravityMul: CONFIG.spaceGravityMul,
-        bg: ['#1f1a52', '#46378a'], walkers: [], floater: 'jetzimmer', space: true },
+        bg: ['#1f1a52', '#46378a'], walkers: [], floater: 'spacedog', space: true },
       { id: 'deep', name: 'Deep Space', start: Z.deep, look: 'deep', profile: PROFILES.deep, gravityMul: CONFIG.spaceGravityMul,
-        bg: ['#130d29', '#2c1950'], walkers: [], floater: 'jetzimmer', space: true },
+        bg: ['#130d29', '#2c1950'], walkers: [], floater: 'spacedog', space: true },
       { id: 'holes', name: 'The Black Hole Belt', start: Z.holes, look: 'deep', profile: PROFILES.holes, gravityMul: CONFIG.spaceGravityMul,
-        bg: ['#0a0716', '#2c0e44'], walkers: [], floater: 'jetzimmer', space: true, blackHoles: true },
+        bg: ['#0a0716', '#2c0e44'], walkers: [], floater: 'spacedog', space: true, blackHoles: true },
     ],
   },
-  pie: {
-    name: 'Universe 2', title: 'Pork Pie World',
-    foods: [['mustard', 0.25], ['piccalilli', 0.25], ['tea', 0.25], ['gravy', 0.25]],
+  yarn: {
+    name: 'Universe 2', title: 'Yarn World',
+    foods: PICKUPS,
     zones: [
-      { id: 'pie', name: 'The Gravy Skies', start: 0, look: 'pie', profile: PROFILES.alt, gravityMul: 1,
-        bg: ['#4a2812', '#b8743a'], walkers: ['queue', 'snail'], floater: 'potsnail' },
-      { id: 'pieHoles', name: 'The Pie Hole', start: CONFIG.altHolesAfter, look: 'pie', profile: PROFILES.altHoles, gravityMul: 1,
-        bg: ['#26140a', '#7a4220'], walkers: ['queue', 'snail'], floater: 'potsnail', blackHoles: true },
+      { id: 'yarn', name: 'The Knitting Basket', start: 0, look: 'yarn', profile: PROFILES.alt, gravityMul: 1,
+        bg: ['#6a3a7a', '#f2a0b8'], walkers: ['tomcat', 'dog'], floater: 'dogballoon' },
+      { id: 'yarnHoles', name: 'The Big Tangle', start: CONFIG.altHolesAfter, look: 'yarn', profile: PROFILES.altHoles, gravityMul: 1,
+        bg: ['#2e1838', '#8a4a7a'], walkers: ['tomcat', 'dog'], floater: 'dogballoon', blackHoles: true },
     ],
   },
-  pizza: {
-    name: 'Universe 3', title: 'Pizza World',
-    foods: [['chilli', 0.25], ['meatball', 0.25], ['garlicbread', 0.25], ['olive', 0.25]],
+  dog: {
+    name: 'Universe 3', title: 'Dog World',
+    foods: PICKUPS,
     zones: [
-      { id: 'pizza', name: 'The Tomato Sky', start: 0, look: 'pizza', profile: PROFILES.alt, gravityMul: 1,
-        bg: ['#7a1d1c', '#f2903e'], walkers: ['nonna', 'vespa'], floater: 'pizzaballoon' },
-      { id: 'pizzaHoles', name: 'The Calzone Zone', start: CONFIG.altHolesAfter, look: 'pizza', profile: PROFILES.altHoles, gravityMul: 1,
-        bg: ['#3a0b10', '#a8381f'], walkers: ['nonna', 'vespa'], floater: 'pizzaballoon', blackHoles: true },
+      { id: 'dog', name: 'The Dog Park', start: 0, look: 'dog', profile: PROFILES.alt, gravityMul: 1,
+        bg: ['#2f6a8a', '#9fdc8a'], walkers: ['dog', 'bulldog', 'dog'], floater: 'dogballoon' },
+      { id: 'dogHoles', name: 'The Dog House', start: CONFIG.altHolesAfter, look: 'dog', profile: PROFILES.altHoles, gravityMul: 1,
+        bg: ['#14283a', '#3a6a5a'], walkers: ['dog', 'bulldog'], floater: 'dogballoon', blackHoles: true },
     ],
   },
 };
 
 const FOODS = {
-  porkpie:     { name: 'PORK PIE',     effect: 'bounce' },
-  sausageroll: { name: 'SAUSAGE ROLL', effect: 'shield' },
-  fish:        { name: 'FISH',         effect: 'bounce' },
-  catnip:      { name: 'CATNIP',       effect: 'shield' },
-  laser:       { name: 'LASER POINTER', effect: 'laser', toy: true },   // a toy: chased, not eaten
-  pizza:       { name: 'PIZZA',        effect: 'rush' },
-  mustard:     { name: 'MUSTARD',      effect: 'rush' },
-  piccalilli:  { name: 'PICCALILLI',   effect: null },
-  tea:         { name: 'CUPPA',        effect: 'shield', liquid: true },
-  gravy:       { name: 'GRAVY',        effect: 'bounce', liquid: true },
-  chilli:      { name: 'CHILLI',       effect: 'rush' },
-  meatball:    { name: 'MEATBALL',     effect: 'bounce' },
-  garlicbread: { name: 'GARLIC BREAD', effect: 'shield' },
-  olive:       { name: 'OLIVE',        effect: null },
+  fish:   { name: 'FISH',          effect: 'bounce' },
+  catnip: { name: 'CATNIP',        effect: 'rush' },
+  laser:  { name: 'LASER POINTER', effect: 'laser', toy: true },   // a toy: chased, not eaten
 };
-const EFFECT_COLORS = { rush: '#ff9a3c', bounce: '#9be564', shield: '#7ad3ff', laser: '#ff3b4a' };
+const EFFECT_COLORS = { rush: '#5fd068', bounce: '#7ad3ff', laser: '#ff3b4a' };
 
 function universeCfg(u = game.universe) { return CONFIG.universes[(u - 1) % CONFIG.universes.length]; }
 function themeId(u = game.universe) { return universeCfg(u).theme; }
@@ -812,9 +803,9 @@ const game = {
   state: 'title',          // 'title' | 'play' | 'portal' | 'dying' | 'over'
   time: 0,
   cam: 0, prevCam: 0,      // world y of the top of the view
-  platforms: [], foods: [], hazards: [], gulls: [], holes: [], particles: [], bubbles: [],
+  platforms: [], foods: [], hazards: [], mice: [], gulls: [], holes: [], particles: [], bubbles: [],
   nextY: 0, lastHoleY: 0, gullT: 4,
-  heightM: 0, foodScore: 0, score: 0, foodEaten: 0,
+  heightM: 0, foodScore: 0, score: 0, foodEaten: 0, miceCaught: 0,
   best: parseInt(store.get('pieSky.best', '0'), 10) || 0,
   bestUniverse: parseInt(store.get('pieSky.bestUni', '1'), 10) || 1,
   newBest: false,
@@ -837,7 +828,7 @@ const player = {
   belly: 0, digestT: 0,
   chewT: 0, visorT: 0,          // munching, and the helmet visor flipped up
   helmet: 0, helmetOn: false,   // helmet drop-on animation 0..1
-  rushT: 0, laserT: 0, bigBounces: 0, shieldT: 0, graceT: 0,
+  rushT: 0, laserT: 0, bigBounces: 0, graceT: 0,
   ouchT: 0, blinkT: 2, beam: null,
   arms: 0,                      // arm pose: -1 down .. 1 up
 };
@@ -851,9 +842,9 @@ function newPlatform(o) {
 function startGame() {
   game.state = 'play';
   game.time = 0;
-  game.platforms = []; game.foods = []; game.hazards = []; game.gulls = []; game.holes = [];
+  game.platforms = []; game.foods = []; game.hazards = []; game.mice = []; game.gulls = []; game.holes = [];
   game.particles = []; game.bubbles = [];
-  game.heightM = 0; game.foodScore = 0; game.score = 0; game.foodEaten = 0;
+  game.heightM = 0; game.foodScore = 0; game.score = 0; game.foodEaten = 0; game.miceCaught = 0;
   game.newBest = false;
   game.universe = 1; game.uniStartM = 0; game.maxUniverse = 1;
   game.zoneIdx = 0;
@@ -867,7 +858,7 @@ function startGame() {
     x: W / 2, y: 0, vx: 0, vy: -jumpVel(), facing: 1,
     stretch: 0.3, stretchV: 0, hair: 0, hairV: 0,
     belly: 0, digestT: 0, chewT: 0, visorT: 0, helmet: 0, helmetOn: false,
-    rushT: 0, laserT: 0, bigBounces: 0, shieldT: 0, graceT: 0, ouchT: 0, beam: null, arms: 0,
+    rushT: 0, laserT: 0, bigBounces: 0, graceT: 0, ouchT: 0, beam: null, arms: 0,
   });
   player.prevX = player.x; player.prevY = player.y;
   // the lawn: a full-width platform to start from
@@ -919,14 +910,14 @@ function genStep() {
   if (role === 'breakable') w *= 0.92;
   if (role === 'bouncy') w = Math.min(w, 66);
 
-  // walkers (pensioners & co.) stand on some platforms
+  // walkers (dogs and stray tomcats) patrol some platforms
   const walkerHere = zone.walkers.length && Math.random() < pval(prof.walker, d) &&
     (role === 'standard' || (role === 'moving' && zone.walkOnMoving));
   let wk = null;
   if (walkerHere) {
     wk = pick(zone.walkers);
-    if (zone.walkOnMoving && role === 'moving') wk = 'pensioner';
-    w = Math.max(w, wk === 'scooter' || wk === 'vespa' || wk === 'queue' ? 112 : 96);
+    if (zone.walkOnMoving && role === 'moving') wk = 'tomcat';
+    w = Math.max(w, wk === 'bulldog' ? 108 : 96);
   }
 
   w = Math.min(w, W - 20);
@@ -940,7 +931,10 @@ function genStep() {
 
   if (wk) {
     game.hazards.push({ kind: wk, plat, off: rand(0.15, 0.85), dir: Math.random() < 0.5 ? -1 : 1,
-      speed: wk === 'snail' ? 6 : wk === 'scooter' || wk === 'vespa' ? 22 : 12, t: rand(0, 10), sayT: 0 });
+      speed: wk === 'dog' ? 26 : wk === 'bulldog' ? 9 : 15, t: rand(0, 10), sayT: 0 });
+  } else if ((role === 'standard' || role === 'moving') && Math.random() < CONFIG.mouseChance) {
+    // a mouse, pottering about: catch it!
+    game.mice.push({ plat, off: rand(0.2, 0.8), dir: Math.random() < 0.5 ? -1 : 1, t: rand(0, 10), flee: 0 });
   }
 
   // a decoy (extra) platform now and then, to fill the sky out
@@ -955,7 +949,7 @@ function genStep() {
   // food floating between platforms
   if (Math.random() < CONFIG.foodChance) spawnFood(rand(30, W - 30), lerp(prevY, y, rand(0.35, 0.65)));
 
-  // floating hazards (balloons, jet-powered zimmer frames...)
+  // floating hazards (dogs in balloons, jetpack space dogs)
   if (zone.floater && Math.random() < pval(prof.floater, d)) {
     const fy = lerp(prevY, y, 0.5);
     game.hazards.push({ kind: zone.floater, x: rand(30, W - 30), y: fy, baseY: fy,
@@ -989,6 +983,7 @@ function cull() {
   game.platforms = game.platforms.filter(p => p.y < bottom && !(p.broken && p.breakT > 1.2));
   game.foods = game.foods.filter(f => f.y < bottom && !f.eaten);
   game.hazards = game.hazards.filter(hz => (hz.plat ? game.platforms.includes(hz.plat) : hz.y < bottom + 80));
+  game.mice = game.mice.filter(m => !m.caught && game.platforms.includes(m.plat));
   game.holes = game.holes.filter(bh => bh.y < bottom + 200);
   game.bubbles = game.bubbles.filter(b => b.t < b.max);
 }
@@ -1247,7 +1242,7 @@ function setupTitle() {
   game.foods = []; game.hazards = []; game.gulls = []; game.holes = []; game.bubbles = [];
   game.cam = game.prevCam = -(H - 92);
   Object.assign(player, { x: W / 2, y: 0, vx: 0, ex: 0, vy: 0, facing: 1, belly: 0, helmetOn: false, helmet: 0,
-    rushT: 0, laserT: 0, shieldT: 0, bigBounces: 0, beam: null, chewT: 0, ouchT: 0 });
+    rushT: 0, laserT: 0, bigBounces: 0, beam: null, chewT: 0, ouchT: 0 });
   player.prevX = player.x; player.prevY = player.y;
 }
 function updateTitle(dt) {
@@ -1290,7 +1285,7 @@ function updatePlay(dt) {
     p.rushT -= dt;
     p.vy = -C.rushSpeed;
     if (Math.random() < dt * 40) {
-      const colors = themeId() === 'pie' ? ['#ffd65a', '#ff9a3c', '#fff1b0'] : ['#ffd65a', '#ff6a3c', '#fff1b0', '#e8452c'];
+      const colors = ['#5fd068', '#9be564', '#d8ff7a', '#fff'];
       addParticle({ type: 'dust', x: p.x + rand(-6, 6), y: p.y + 4, vx: rand(-40, 40), vy: rand(80, 200), r0: rand(4, 6), r1: rand(10, 16), life: 0, max: rand(0.3, 0.5), color: pick(colors) });
     }
     if (p.rushT <= 0) p.vy = -C.rushSpeed * 0.5;
@@ -1333,12 +1328,12 @@ function updatePlay(dt) {
   }
 
   updateFood(dt);
+  updateMice(dt);
   updateHazards(dt);
   updateGulls(dt);
   for (const bh of game.holes) bh.t += dt;
   updateSprings(dt);
   p.graceT = Math.max(0, p.graceT - dt);
-  if (p.shieldT > 0) { p.shieldT -= dt; if (p.shieldT <= 0) Sound.tone(700, 0.25, 'sine', 0.08, 0, 300); }
 
   // digestion
   if (p.belly > 0) {
@@ -1436,7 +1431,7 @@ function updateBeam(dt) {
     p.beam = null;
     p.vy = 260; p.graceT = 0.5;
     pl.leaving = true; pl.beamOn = false; pl.vx = (Math.random() < 0.5 ? -1 : 1) * 380;
-    speak(pick(['Wrong species!', 'Too fluffy!', 'Put it back.', 'Smells of pies.']), pl, { color: '#2f8a4a' });
+    speak(pick(['Wrong species!', 'Too fluffy!', 'Put it back.', 'Smells of fish.']), pl, { color: '#2f8a4a' });
     Sound.tone(600, 0.5, 'sine', 0.1, 0, 1800);
     game.shake = 4;
   }
@@ -1470,7 +1465,7 @@ function land(pl) {
 }
 
 function dustColor(pl) {
-  return { lawn: '#d8d2d8', garden: '#e8e2d6', sky: '#ffffff', edge: '#e6ecff', deep: '#c9b8e8', pie: '#ffe3a8', pizza: '#fff1c4' }[pl.look] || '#fff';
+  return { lawn: '#d8d2d8', garden: '#e8e2d6', sky: '#ffffff', edge: '#e6ecff', deep: '#c9b8e8', yarn: '#ffd1e8', dog: '#e8f5d0' }[pl.look] || '#fff';
 }
 function crumbColors(pl) {
   switch (pl.look) {
@@ -1478,8 +1473,8 @@ function crumbColors(pl) {
     case 'sky': return ['#ffffff', '#e6e0f5', '#cfc2ea'];
     case 'edge': return ['#3f6fc4', '#7ad3ff', '#c0c8d8'];
     case 'deep': return ['#bfe6ff', '#8fc4e8', '#ffffff'];
-    case 'pie': return ['#e8a650', '#c8823a', '#ffd38a'];
-    case 'pizza': return ['#e8b860', '#d49a40', '#fff0c0'];
+    case 'yarn': return ['#e85a8a', '#ffd65a', '#8a6ad0'];
+    case 'dog': return ['#d9a868', '#b8844a', '#f3dcb4'];
   }
   return ['#fff'];
 }
@@ -1515,15 +1510,11 @@ function eat(f) {
   if (def.effect === 'rush') {
     p.rushT = C.rushTime; p.vy = -C.rushSpeed;
     Sound.rush(); game.shake = 4;
-    popText(themeId() === 'human' ? 'PIZZA RUSH!' : 'HOT HOT HOT!', W / 2, H * 0.3, { screen: true, size: 26, color: EFFECT_COLORS.rush, rot: 0, max: 1.2 });
+    popText('CATNIP ZOOMIES!', W / 2, H * 0.3, { screen: true, size: 26, color: EFFECT_COLORS.rush, rot: 0, max: 1.2 });
   } else if (def.effect === 'bounce') {
     p.bigBounces = C.bigBounces;
     Sound.power();
     popText(`BIG BOUNCE x${C.bigBounces}`, W / 2, H * 0.3, { screen: true, size: 24, color: EFFECT_COLORS.bounce, rot: 0, max: 1.2 });
-  } else if (def.effect === 'shield') {
-    p.shieldT = C.shieldTime;
-    Sound.shieldUp();
-    popText(themeId() === 'human' ? 'CATNIP BLISS!' : 'SHIELD!', W / 2, H * 0.3, { screen: true, size: 24, color: EFFECT_COLORS.shield, rot: 0, max: 1.2 });
   }
   if (def.effect) emitSparkles(p.x, bodyY(), 10, [EFFECT_COLORS[def.effect], '#fff']);
   if (p.belly === C.belly.max) speak(pick(['I may need a bigger collar.', 'Room for one more... maybe.', 'Oof. Worth it.']), 'player');
@@ -1543,20 +1534,43 @@ function grabToy(f, def) {
 }
 
 function foodCrumbColors(kind) {
-  switch (kind) {
-    case 'pizza': case 'chilli': return ['#e8452c', '#ffd65a', '#e8a650'];
-    case 'mustard': case 'piccalilli': return ['#ffd23c', '#c8a020', '#e8e070'];
-    case 'tea': case 'gravy': return ['#8a5a30', '#c49060', '#fff'];
-    case 'olive': return ['#3a4a20', '#6a7a30'];
-    case 'meatball': return ['#7a3a20', '#c84a2c'];
-    case 'garlicbread': return ['#e8b860', '#7ab040', '#fff0c0'];
-    case 'fish': return ['#9fc4dc', '#e8f2f8', '#6a90b0'];
-    case 'catnip': return ['#5aa04a', '#9be564', '#c8a878'];
-  }
-  return ['#e8a650', '#c8823a', '#ffd38a', '#f0c070'];
+  if (kind === 'catnip') return ['#5aa04a', '#9be564', '#c8a878'];
+  return ['#9fc4dc', '#e8f2f8', '#6a90b0'];                     // fish
 }
 
-// Pensioners & co.: where they are, and their hitbox [x, y, w, h].
+/* --- mice: they potter along platforms and run when she gets close --- */
+function updateMice(dt) {
+  const p = player, C = CONFIG;
+  for (const m of game.mice) {
+    m.t += dt;
+    const pl = m.plat;
+    if (pl.broken || pl.leaving) { m.caught = true; continue; }       // it scarpers
+    const mx = pl.x + m.off * pl.w, dx = wrapDX(mx, p.x), dy = pl.y - p.y;
+    const near = Math.abs(dx) < 110 && dy > -40 && dy < 110;
+    if (near && m.flee <= 0) { m.flee = 1.2; m.dir = dx > 0 ? -1 : 1; if (Math.random() < 0.5) speak(pick(SQUEAKS), m, { color: '#8a6aa0', max: 1.2 }); }
+    m.flee = Math.max(0, m.flee - dt);
+    const sp = m.flee > 0 ? C.mouseFleeSpeed : 22 * (Math.sin(m.t * 1.3) > -0.3 ? 1 : 0);   // potters, stops to sniff
+    m.off += m.dir * sp * dt / pl.w;
+    if (m.off < 0.08) { m.off = 0.08; m.dir = 1; } else if (m.off > 0.92) { m.off = 0.92; m.dir = -1; }
+    if (p.beam || game.state !== 'play') continue;
+    if (Math.abs(wrapDX(p.x, mx)) < 22 && p.y > pl.y - 26 && p.y - BODY_H < pl.y) catchMouse(m, mx, pl.y);
+  }
+  game.mice = game.mice.filter(m => !m.caught);
+}
+function catchMouse(m, x, y) {
+  const p = player, C = CONFIG;
+  m.caught = true;
+  const pts = Math.round(C.mousePoints * (1 + p.belly * C.belly.bonusPerLevel));
+  game.foodScore += pts;
+  game.miceCaught++;
+  game.scorePulse = 1;
+  p.chewT = 0.5;
+  Sound.squeak(); Sound.power();
+  emitStars(x, y - 10, 6, ['#ffe066', '#fff', '#ff9fb5']);
+  popText(pick(MOUSE_LINES), x, y - 30, { size: 18, color: '#ffe066', sub: `+${pts}`, max: 1.1 });
+}
+
+// Dogs, tomcats & co.: where they are, and their hitbox [x, y, w, h].
 function hazardPos(hz) {
   if (hz.plat) return { x: hz.plat.x + hz.off * hz.plat.w, y: hz.plat.y };
   return { x: hz.x, y: hz.y };
@@ -1564,12 +1578,11 @@ function hazardPos(hz) {
 function hazardBox(hz) {
   const q = hazardPos(hz);
   switch (hz.kind) {
-    case 'scooter': case 'vespa': return [q.x - 18, q.y - 40, 36, 40];
-    case 'queue': return [q.x - 22, q.y - 42, 44, 42];
-    case 'snail': return [q.x - 18, q.y - 30, 36, 30];
-    case 'pensioner': case 'nonna': return [q.x - 10, q.y - 42, 20, 42];
-    case 'balloon': case 'potsnail': case 'pizzaballoon': return [q.x - 18, q.y - 46, 36, 70];
-    default: return [q.x - 18, q.y - 24, 36, 44];      // jet zimmer
+    case 'dog': return [q.x - 15, q.y - 24, 30, 24];
+    case 'bulldog': return [q.x - 20, q.y - 28, 40, 28];
+    case 'tomcat': return [q.x - 13, q.y - 30, 26, 30];
+    case 'dogballoon': return [q.x - 18, q.y - 46, 36, 70];
+    default: return [q.x - 18, q.y - 20, 36, 38];      // space dog
   }
 }
 function updateHazards(dt) {
@@ -1598,16 +1611,8 @@ function updateHazards(dt) {
 function knock(hz) {
   const p = player, C = CONFIG, q = hazardPos(hz);
   const side = wrapDX(q.x, p.x) < 0 ? -1 : 1;
-  speak(pick(GRUMBLES[hz.kind] || GRUMBLES.pensioner), hz);
+  speak(pick(GRUMBLES[hz.kind] || GRUMBLES.dog), hz);
   Sound.grumble();
-  if (p.shieldT > 0) {
-    p.graceT = 0.6;
-    p.ex = side * 180;
-    Sound.shieldBlock();
-    emitSparkles(p.x, bodyY(), 10, [EFFECT_COLORS.shield, '#fff']);
-    popText('BLOCKED!', p.x, p.y - 80, { size: 18, color: EFFECT_COLORS.shield });
-    return;
-  }
   p.vy = Math.max(p.vy, C.knockDown);
   p.ex = side * C.knockSide;
   p.graceT = C.knockGrace;
@@ -1684,11 +1689,6 @@ function updateGulls(dt) {
         popText(pick(BOP_LINES), gl.x, gl.y - 20, { size: 18, color: '#fff', sub: `+${C.bopPoints}` });
       } else if (gl.state === 'hunt' && p.graceT <= 0 && p.rushT <= 0 && p.laserT <= 0) {
         gl.state = 'flee';
-        if (p.shieldT > 0) {
-          Sound.shieldBlock(); emitFeathers(gl.x, gl.y, 5);
-          popText('BLOCKED!', p.x, p.y - 80, { size: 18, color: EFFECT_COLORS.shield });
-          continue;
-        }
         Sound.squawk(); emitFeathers(gl.x, gl.y, 4);
         speak(pick(GULL_LINES), gl, { color: '#c2335a' });
         game.lastGullT = game.time;
@@ -1760,7 +1760,7 @@ function switchUniverse() {
   game.universe++;
   game.maxUniverse = Math.max(game.maxUniverse, game.universe);
   game.uniStartM = toMetres(p.y);
-  game.platforms = []; game.foods = []; game.hazards = []; game.gulls = []; game.holes = []; game.bubbles = [];
+  game.platforms = []; game.foods = []; game.hazards = []; game.mice = []; game.gulls = []; game.holes = []; game.bubbles = [];
   game.zoneIdx = 0;
   p.helmetOn = false; p.helmet = 0; p.visorT = 0;
   p.vx = 0; p.ex = 0; p.beam = null;
@@ -1785,7 +1785,7 @@ function die() {
   Music.stop();
   Music.sadTrombone();
   Sound.setHum(0);
-  p.rushT = 0; p.laserT = 0; p.shieldT = 0; p.beam = null;
+  p.rushT = 0; p.laserT = 0; p.beam = null;
   // pick a game-over line
   const t = game.time, tid = themeId();
   let pool = MESSAGES.any;
@@ -1793,8 +1793,8 @@ function die() {
   else if (t - game.lastGullT < 3) pool = MESSAGES.gull;
   else if (p.belly >= 3 && Math.random() < 0.6) pool = MESSAGES.belly;
   else if (Math.random() < 0.5) {
-    if (tid === 'pie') pool = MESSAGES.pie;
-    else if (tid === 'pizza') pool = MESSAGES.pizza;
+    if (tid === 'yarn') pool = MESSAGES.yarn;
+    else if (tid === 'dog') pool = MESSAGES.dog;
     else if (theme().zones[game.zoneIdx].space) pool = MESSAGES.space;
   }
   let msg = pick(pool);
@@ -1833,10 +1833,10 @@ const DECOR = {
   edge:       { far: ['moon', 'none', 'satFar'], near: ['satFar', 'none', 'cloudThin', 'none'] },
   deep:       { far: ['ringPlanet', 'planet', 'nebula', 'galaxy'], near: ['rock', 'none', 'none', 'satFar'] },
   holes:      { far: ['galaxy', 'nebula', 'nebula', 'ringPlanet'], near: ['rock', 'none', 'swirl', 'none'] },
-  pie:        { far: ['piePlanet', 'gravyMoon', 'none'], near: ['steam', 'teapot', 'cup', 'steam', 'none'] },
-  pieHoles:   { far: ['piePlanet', 'nebula', 'gravyMoon'], near: ['steam', 'teapot', 'none', 'swirl'] },
-  pizza:      { far: ['pepPlanet', 'olivePlanet', 'none'], near: ['basil', 'mushroom', 'cheese', 'basil', 'none'] },
-  pizzaHoles: { far: ['pepPlanet', 'nebula', 'olivePlanet'], near: ['basil', 'none', 'swirl', 'mushroom'] },
+  yarn:       { far: ['yarnPlanet', 'buttonMoon', 'none'], near: ['button', 'needles', 'thread', 'button', 'none'] },
+  yarnHoles:  { far: ['yarnPlanet', 'nebula', 'buttonMoon'], near: ['thread', 'button', 'none', 'swirl'] },
+  dog:        { far: ['ballPlanet', 'boneMoon', 'none'], near: ['bone', 'paws', 'bone', 'cloud', 'none'] },
+  dogHoles:   { far: ['ballPlanet', 'nebula', 'boneMoon'], near: ['bone', 'none', 'swirl', 'paws'] },
 };
 
 // The background's zone mix at the middle of the view.
@@ -1874,7 +1874,7 @@ function drawBackground(cam) {
 }
 
 function drawStars(cam, a, tid) {
-  const colors = tid === 'pie' ? ['#fff1d0', '#ffd38a'] : tid === 'pizza' ? ['#fff1c4', '#ffd65a'] : ['#ffffff', '#cfe8ff', '#ffe9b0'];
+  const colors = tid === 'yarn' ? ['#fff1f8', '#ffd1e8'] : tid === 'dog' ? ['#f4ffe0', '#d8f04a'] : ['#ffffff', '#cfe8ff', '#ffe9b0'];
   const span = H + 40, off = -cam * 0.05;
   for (let i = 0; i < 90; i++) {
     const x = hash2(i, 1) * W, y = ((hash2(i, 2) * span + off) % span + span) % span - 20;
@@ -2058,77 +2058,70 @@ function drawDecor(kind, x, y, seed, alpha) {
       ctx.beginPath(); for (let k = 0; k < 7; k++) { const a = k / 7 * TAU, r = (7 + hash2(seed, k) * 4) * s; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); ctx.fill();
       break;
     }
-    // --- Pork Pie World ---
-    case 'steam': {
-      for (let k = 0; k < 3; k++) {
-        const rise = (((t * 12 + k * 20 + seed * 7) % 60) + 60) % 60;
-        ctx.globalAlpha = alpha * 0.35 * (1 - rise / 60);
-        ctx.fillStyle = '#fff6e8';
-        ctx.beginPath(); ctx.arc(Math.sin(t + k * 2) * 10 + k * 14 - 14, -rise, 14 + rise * 0.3, 0, TAU); ctx.fill();
+    // --- Yarn World ---
+    case 'yarnPlanet': {
+      const r = 30 * s, col = ['#e85a8a', '#8a6ad0', '#5fc0b0'][seed % 3];
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.clip();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
+      ctx.beginPath(); for (let k = -4; k <= 4; k++) { ctx.moveTo(-r, k * 8 * s - r * 0.5); ctx.quadraticCurveTo(0, k * 8 * s + r * 0.4, r, k * 8 * s - r * 0.6); } ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(r * 0.7, r * 0.7); ctx.quadraticCurveTo(r * 1.4, r * 0.9, r * 1.2 + Math.sin(t + seed) * 6, r * 1.6); ctx.stroke();
+      break;
+    }
+    case 'buttonMoon': case 'button': {
+      const r = (kind === 'button' ? 10 : 22) * s;
+      if (kind === 'button') ctx.rotate(t * 0.5 + seed);
+      ctx.fillStyle = ['#ffd65a', '#7ad3ff', '#ff8fc8'][seed % 3]; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(43,23,64,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, r * 0.75, 0, TAU); ctx.stroke();
+      ctx.fillStyle = 'rgba(43,23,64,0.45)';
+      for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.beginPath(); ctx.arc(a * r * 0.25, b * r * 0.25, r * 0.12, 0, TAU); ctx.fill(); }
+      break;
+    }
+    case 'needles': {
+      ctx.rotate(Math.sin(t * 0.6 + seed) * 0.3);
+      for (const [rot, col] of [[0.5, 'rgba(192,200,216,0.8)'], [-0.5, 'rgba(138,106,208,0.8)']]) {
+        ctx.save(); ctx.rotate(rot);
+        ctx.fillStyle = col; roundRect(ctx, -30 * s, -2, 60 * s, 4, 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,214,90,0.85)'; ctx.beginPath(); ctx.arc(-30 * s, 0, 4, 0, TAU); ctx.fill();
+        ctx.restore();
       }
       break;
     }
-    case 'teapot': {
-      ctx.rotate(Math.sin(t * 0.8 + seed) * 0.2);
-      ctx.scale(0.8 * s, 0.8 * s);
-      ctx.fillStyle = 'rgba(255,246,232,0.75)'; ctx.strokeStyle = 'rgba(43,23,64,0.5)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(0, 0, 20, 15, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(18, -2); ctx.quadraticCurveTo(32, -6, 34, -16); ctx.stroke();
-      ctx.beginPath(); ctx.arc(-22, 0, 7, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,143,200,0.6)'; ctx.fillRect(-14, -3, 28, 4);
-      ctx.fillStyle = 'rgba(255,246,232,0.75)'; ctx.beginPath(); ctx.ellipse(0, -15, 8, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    case 'thread': {
+      ctx.strokeStyle = 'rgba(232,90,138,0.55)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-70, 0);
+      for (let k = -70; k <= 70; k += 10) ctx.lineTo(k, Math.sin(k * 0.06 + t + seed) * 10);
+      ctx.stroke();
       break;
     }
-    case 'cup': {
-      ctx.rotate(Math.sin(t + seed) * 0.3);
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.strokeStyle = 'rgba(43,23,64,0.5)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(10, -8); ctx.lineTo(7, 8); ctx.lineTo(-7, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(11, -1, 4, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(160,100,50,0.8)'; ctx.beginPath(); ctx.ellipse(0, -8, 9, 2, 0, 0, TAU); ctx.fill();
-      break;
-    }
-    case 'piePlanet': {
+    // --- Dog World ---
+    case 'ballPlanet': {
       const r = 30 * s;
-      ctx.fillStyle = '#c8823a'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#e8a650'; ctx.beginPath(); ctx.arc(0, -r * 0.1, r * 0.92, Math.PI, TAU); ctx.fill();
-      ctx.fillStyle = '#ffd38a';
-      for (let k = 0; k < 9; k++) { const a = Math.PI + k / 8 * Math.PI; ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.92, -r * 0.1 + Math.sin(a) * r * 0.92, 3.5 * s, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = '#d8f04a'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(-r * 1.1, 0, r * 0.75, -0.9, 0.9); ctx.stroke();
+      ctx.beginPath(); ctx.arc(r * 1.1, 0, r * 0.75, Math.PI - 0.9, Math.PI + 0.9); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.4, r * 0.25, 0, TAU); ctx.fill();
       break;
     }
-    case 'gravyMoon': {
-      ctx.fillStyle = '#8a5a30'; ctx.beginPath(); ctx.arc(0, 0, 24 * s, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#a8703c'; ctx.beginPath(); ctx.arc(-6, -6, 10 * s, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(-9, -10, 4 * s, 0, TAU); ctx.fill();
+    case 'boneMoon': case 'bone': {
+      const k = kind === 'bone' ? 0.6 * s : 1.3 * s;
+      if (kind === 'bone') ctx.rotate(t * 0.7 + seed);
+      ctx.scale(k, k);
+      ctx.fillStyle = 'rgba(255,246,232,0.85)';
+      roundRect(ctx, -16, -4, 32, 8, 4); ctx.fill();
+      for (const bx of [-16, 16]) for (const by of [-4, 4]) { ctx.beginPath(); ctx.arc(bx, by, 5.5, 0, TAU); ctx.fill(); }
       break;
     }
-    // --- Pizza World ---
-    case 'basil': {
-      ctx.rotate(t * 0.6 + seed);
-      ctx.fillStyle = 'rgba(80,170,70,0.75)'; ctx.beginPath(); ctx.ellipse(0, 0, 12 * s, 6 * s, 0, 0, TAU); ctx.fill();
-      ctx.strokeStyle = 'rgba(40,110,40,0.8)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-11 * s, 0); ctx.lineTo(11 * s, 0); ctx.stroke();
-      break;
-    }
-    case 'mushroom': {
-      ctx.rotate(Math.sin(t * 0.7 + seed) * 0.4);
-      ctx.fillStyle = 'rgba(240,226,200,0.8)'; roundRect(ctx, -5, 0, 10, 14, 4); ctx.fill();
-      ctx.fillStyle = 'rgba(210,180,140,0.85)'; ctx.beginPath(); ctx.arc(0, 2, 15, Math.PI, TAU); ctx.fill();
-      break;
-    }
-    case 'cheese': {
-      ctx.strokeStyle = 'rgba(255,214,90,0.6)'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(-60, 0); ctx.quadraticCurveTo(0, 30 + Math.sin(t + seed) * 6, 60, 0); ctx.stroke();
-      break;
-    }
-    case 'pepPlanet': case 'olivePlanet': {
-      const r = 26 * s, pep = kind === 'pepPlanet';
-      ctx.fillStyle = pep ? '#c8382a' : '#3a3a28'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
-      if (pep) {
-        ctx.fillStyle = 'rgba(120,20,20,0.5)';
-        [[6, -8, 4], [-8, 4, 5], [9, 10, 3]].forEach(([a, b, rr]) => { ctx.beginPath(); ctx.arc(a * s, b * s, rr * s, 0, TAU); ctx.fill(); });
-      } else {
-        ctx.fillStyle = '#1a1a10'; ctx.beginPath(); ctx.arc(0, 0, r * 0.38, 0, TAU); ctx.fill();
+    case 'paws': {
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      for (let k = 0; k < 4; k++) {
+        const px = -45 + k * 30, py = (k % 2) * 12;
+        ctx.beginPath(); ctx.ellipse(px, py, 5, 4, 0, 0, TAU); ctx.fill();
+        for (const [a, b] of [[-5, -6], [-1.5, -8], [2, -8], [5.5, -6]]) { ctx.beginPath(); ctx.arc(px + a, py + b, 1.8, 0, TAU); ctx.fill(); }
       }
-      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, TAU); ctx.fill();
       break;
     }
   }
@@ -2483,65 +2476,72 @@ const PLATFORM_SKINS = {
       cracks(x, y, w, 11, '#5a8ab0');
     },
   },
-  pie: {
-    standard(pl, x, y, w) {                       // a slab of pork pie crust
-      ctx.fillStyle = '#c8823a'; roundRect(ctx, x, y, w, 16, 4); ctx.fill();
-      ctx.fillStyle = '#f0b860'; roundRect(ctx, x, y, w, 7, 3); ctx.fill();
-      ctx.fillStyle = '#ffd38a';
-      for (let k = 6; k < w - 3; k += 8) { ctx.beginPath(); ctx.arc(x + k, y + 1, 3, Math.PI, TAU); ctx.fill(); }
-      ctx.strokeStyle = OUT; ctx.lineWidth = 2; roundRect(ctx, x, y, w, 16, 4); ctx.stroke();
-      ctx.fillStyle = '#e88a8a'; ctx.fillRect(x + w * 0.66, y + 8, w * 0.22, 6);     // a peek of pink filling
-    },
-    bouncy(pl, x, y, w) {                         // wobbly pork pie jelly
-      const wob = Math.sin(game.time * 8 + pl.seed) * 1.5 * (0.3 + Math.abs(pl.squash));
-      ctx.save(); ctx.globalAlpha = 0.92;
-      dome(x - wob, y + wob, w + wob * 2, 16 - wob, '#ffcf5a', '#ff8fc8');
+  yarn: {
+    standard(pl, x, y, w) {                       // a knitted scarf, stripy
+      const cols = ['#e85a8a', '#ffd65a', '#8a6ad0', '#5fc0b0'], k0 = Math.floor(pl.seed) % 4;
+      ctx.save(); roundRect(ctx, x, y, w, 15, 5); ctx.clip();
+      for (let i = 0; i * 12 < w; i++) { ctx.fillStyle = cols[(k0 + i) % 4]; ctx.fillRect(x + i * 12, y, 12, 15); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;               // the stitches
+      ctx.beginPath(); for (let sx = x + 3; sx < x + w; sx += 5) { ctx.moveTo(sx, y + 3); ctx.lineTo(sx + 2, y + 6); ctx.lineTo(sx + 4, y + 3); ctx.moveTo(sx, y + 8); ctx.lineTo(sx + 2, y + 11); ctx.lineTo(sx + 4, y + 8); } ctx.stroke();
       ctx.restore();
-      ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.beginPath(); ctx.ellipse(x + w * 0.3, y + 4, 5, 2.5, -0.3, 0, TAU); ctx.fill();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 2; roundRect(ctx, x, y, w, 15, 5); ctx.stroke();
+      ctx.strokeStyle = cols[k0]; ctx.lineWidth = 2;                                // tassels
+      ctx.beginPath(); for (const ex of [x - 1, x + w + 1]) for (let k = 0; k < 3; k++) { ctx.moveTo(ex, y + 3 + k * 4.5); ctx.lineTo(ex + (ex < x + 1 ? -5 : 5), y + 4 + k * 4.5 + Math.sin(game.time * 3 + k) * 1.5); } ctx.stroke();
     },
-    moving(pl, x, y, w) {                         // a sliding sausage
-      ctx.fillStyle = '#b8603e'; roundRect(ctx, x, y, w, 14, 7); ctx.fill();
-      ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = 'rgba(255,220,200,0.45)'; roundRect(ctx, x + 6, y + 2.5, w - 12, 3, 1.5); ctx.fill();
-      ctx.strokeStyle = '#8a4428'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(x + 4, y + 4); ctx.lineTo(x - 2, y + 7); ctx.lineTo(x + 4, y + 10); ctx.moveTo(x + w - 4, y + 4); ctx.lineTo(x + w + 2, y + 7); ctx.lineTo(x + w - 4, y + 10); ctx.stroke();
+    bouncy(pl, x, y, w) {                         // a ball of wool
+      dome(x, y, w, 18, '#e85a8a', '#ffd65a');
+      ctx.save(); ctx.beginPath(); ctx.moveTo(x, y + 18); ctx.quadraticCurveTo(x, y - 2, x + w / 2, y - 2); ctx.quadraticCurveTo(x + w, y - 2, x + w, y + 18); ctx.clip();
+      ctx.strokeStyle = 'rgba(120,20,60,0.45)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); for (let k = -3; k <= 3; k++) { ctx.moveTo(x + w / 2 + k * 9 - 12, y + 20); ctx.quadraticCurveTo(x + w / 2 + k * 9, y + 4, x + w / 2 + k * 9 + 14, y - 2); } ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = '#e85a8a'; ctx.lineWidth = 2;                                // a loose end
+      ctx.beginPath(); ctx.moveTo(x + w - 4, y + 12); ctx.quadraticCurveTo(x + w + 6, y + 14, x + w + 4, y + 22); ctx.stroke();
     },
-    breakable(pl, x, y, w) {                      // a sheet of flaky pastry
-      ctx.fillStyle = '#f3d08a'; roundRect(ctx, x, y, w, 10, 3); ctx.fill();
-      ctx.strokeStyle = '#d4a050'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x + 3, y + 4); ctx.lineTo(x + w - 3, y + 4); ctx.moveTo(x + 3, y + 7); ctx.lineTo(x + w - 3, y + 7); ctx.stroke();
+    moving(pl, x, y, w) {                         // a pair of knitting needles, sliding along
+      for (const [dy, col] of [[2, '#c0c8d8'], [8, '#8a6ad0']]) {
+        ctx.fillStyle = col; roundRect(ctx, x + 4, y + dy, w - 8, 5, 2.5); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 1.8; ctx.stroke();
+        ctx.fillStyle = '#ffd65a'; ctx.beginPath(); ctx.arc(x + 4, y + dy + 2.5, 4, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x + w - 4, y + dy); ctx.lineTo(x + w + 3, y + dy + 2.5); ctx.lineTo(x + w - 4, y + dy + 5); ctx.fill(); ctx.stroke();
+      }
+    },
+    breakable(pl, x, y, w) {                      // a scrap of loose crochet, coming undone
+      ctx.fillStyle = '#ffd1e8'; roundRect(ctx, x, y, w, 10, 3); ctx.fill();
+      ctx.strokeStyle = '#e85a8a'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); for (let sx = x + 4; sx < x + w - 2; sx += 7) { ctx.moveTo(sx + 3.5, y + 5); ctx.arc(sx, y + 5, 3, 0, TAU); } ctx.stroke();
       ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.setLineDash([6, 3]); roundRect(ctx, x, y, w, 10, 3); ctx.stroke(); ctx.setLineDash([]);
-      cracks(x, y, w, 10, '#8a5a20');
+      ctx.strokeStyle = '#e85a8a'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(x + w * 0.4, y + 10); ctx.quadraticCurveTo(x + w * 0.45, y + 18, x + w * 0.38, y + 22 + Math.sin(game.time * 3 + pl.seed) * 2); ctx.stroke();
     },
   },
-  pizza: {
-    standard(pl, x, y, w) {                       // a pizza box
-      slab(x, y, w, 15, '#d9a868', '#ebc48a', 3);
-      ctx.strokeStyle = 'rgba(43,23,64,0.35)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x + 3, y + 6); ctx.lineTo(x + w - 3, y + 6); ctx.stroke();
-      ctx.fillStyle = '#e0455b'; ctx.beginPath(); ctx.arc(x + w / 2, y + 10, 3.5, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + w / 2, y + 10, 1.5, 0, TAU); ctx.fill();
+  dog: {
+    standard(pl, x, y, w) {                       // a kennel roof
+      ctx.fillStyle = '#c0503a'; roundRect(ctx, x, y, w, 15, 3); ctx.fill();
+      ctx.strokeStyle = 'rgba(80,20,10,0.45)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); for (let r = 0; r < 2; r++) for (let sx = x + (r ? 6 : 0); sx < x + w; sx += 12) { ctx.moveTo(sx, y + 5 + r * 5); ctx.lineTo(sx, y + 10 + r * 5); } ctx.moveTo(x, y + 5); ctx.lineTo(x + w, y + 5); ctx.moveTo(x, y + 10); ctx.lineTo(x + w, y + 10); ctx.stroke();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 2; roundRect(ctx, x, y, w, 15, 3); ctx.stroke();
+      ctx.fillStyle = '#fff6e8'; roundRect(ctx, x + w / 2 - 12, y + 3, 24, 9, 2); ctx.fill(); ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = '#c0503a'; ctx.font = `bold 6px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(['REX', 'FIDO', 'BUSTER', 'MAX'][Math.floor(pl.seed) % 4], x + w / 2, y + 7.8);
     },
-    bouncy(pl, x, y, w) {                         // a ball of dough
-      dome(x, y, w, 16, '#f6e7c8', '#ff8fc8');
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.arc(x + 8 + hash2(pl.seed, k) * (w - 16), y + 3 + hash2(pl.seed, k + 5) * 6, 1.2, 0, TAU); ctx.fill(); }
+    bouncy(pl, x, y, w) {                         // a giant tennis ball
+      dome(x, y, w, 18, '#d8f04a', '#ff8fc8');
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(x + w * 0.2, y + 16); ctx.quadraticCurveTo(x + w * 0.35, y + 2, x + w * 0.5, y + 6); ctx.quadraticCurveTo(x + w * 0.65, y + 10, x + w * 0.8, y + 1); ctx.stroke();
     },
-    moving(pl, x, y, w) {                         // a flying pizza slice
-      const dir = pl.vx >= 0 ? 1 : -1, cx = x + w / 2;
-      ctx.save(); ctx.translate(cx, y); ctx.scale(dir, 1);
-      ctx.fillStyle = '#ffd65a';
-      ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0); ctx.lineTo(w / 2 - 6, 14); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#e8a650'; roundRect(ctx, -w / 2 - 2, -3, 12, 9, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#c8382a'; [[-12, 4], [6, 4], [18, 7]].forEach(([a, b]) => { ctx.beginPath(); ctx.arc(a * w / 80, b, 3, 0, TAU); ctx.fill(); });
-      ctx.restore();
+    moving(pl, x, y, w) {                         // a flying frisbee
+      const cx = x + w / 2;
+      ctx.fillStyle = '#4a8ad0'; ctx.beginPath(); ctx.ellipse(cx, y + 6, w / 2, 7, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = '#a8d0ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, y + 4.5, w / 2 - 7, 3.5, 0, 0, TAU); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(cx - w * 0.2, y + 3, 6, 1.5, 0, 0, TAU); ctx.fill();
     },
-    breakable(pl, x, y, w) {                      // cracker-thin crust, a bit burnt
-      ctx.fillStyle = '#e8b860'; roundRect(ctx, x, y, w, 9, 3); ctx.fill();
-      ctx.fillStyle = '#6a4020'; [0.2, 0.55, 0.8].forEach(fx => { ctx.beginPath(); ctx.arc(x + w * fx, y + 5, 2, 0, TAU); ctx.fill(); });
-      ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.setLineDash([6, 3]); roundRect(ctx, x, y, w, 9, 3); ctx.stroke(); ctx.setLineDash([]);
-      cracks(x, y, w, 9, '#6a4020');
+    breakable(pl, x, y, w) {                      // a big crumbly dog biscuit
+      ctx.fillStyle = '#d9a868';
+      ctx.beginPath(); roundRect(ctx, x + 6, y + 1, w - 12, 9, 3); ctx.fill();
+      for (const ex of [x + 6, x + w - 6]) for (const ey of [y + 2, y + 9]) { ctx.beginPath(); ctx.arc(ex, ey, 5, 0, TAU); ctx.fill(); }
+      ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
+      ctx.beginPath(); roundRect(ctx, x, y - 3, w, 17, 7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#8a5a2a'; [0.3, 0.5, 0.7].forEach(fx => { ctx.beginPath(); ctx.arc(x + w * fx, y + 5.5, 1.2, 0, TAU); ctx.fill(); });
+      cracks(x + 6, y + 1, w - 12, 9, '#6a4020');
     },
   },
 };
@@ -2591,61 +2591,6 @@ function drawFood(kind, x, y, rot, s) {
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.strokeStyle = OUT; ctx.lineWidth = 2;
   switch (kind) {
-    case 'porkpie': {
-      // A pork pie cut in half, seen from the front: the back half of the
-      // crimped lid, and the cut face showing crust, jelly and pink meat.
-      const R = 13, RY = 5, TOP = -4, H = 15;
-      // back half of the lid
-      ctx.fillStyle = '#e8ad55';
-      ctx.beginPath(); ctx.ellipse(0, TOP, R, RY, 0, Math.PI, TAU); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#f6c977';
-      for (let k = 0; k <= 8; k++) {
-        const a = Math.PI + 0.2 + k / 8 * (Math.PI - 0.4);
-        ctx.beginPath(); ctx.arc(Math.cos(a) * R * 0.9, TOP + Math.sin(a) * RY * 0.75, 1.5, 0, TAU); ctx.fill();
-      }
-      ctx.fillStyle = '#c9823a'; ctx.beginPath(); ctx.ellipse(-2, TOP - 2.6, 3, 1.1, -0.2, 0, TAU); ctx.fill();
-      // the cut face
-      ctx.fillStyle = '#c9823a'; roundRect(ctx, -R, TOP, R * 2, H, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#f2d36b'; roundRect(ctx, -R + 2.6, TOP + 2.6, R * 2 - 5.2, H - 5, 3); ctx.fill();
-      ctx.fillStyle = '#ef9a9a'; roundRect(ctx, -R + 4.6, TOP + 4.6, R * 2 - 9.2, H - 8.6, 2.5); ctx.fill();
-      ctx.fillStyle = '#c96f78';
-      [[-5, 3], [-1, 5.5], [3, 2.5], [5.5, 6], [1, 8]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 0.9, 0, TAU); ctx.fill(); });
-      ctx.fillStyle = 'rgba(255,240,200,0.4)'; roundRect(ctx, -R + 0.8, TOP + 3, 1.4, H - 7, 0.7); ctx.fill();
-      break;
-    }
-    case 'sausageroll': {
-      // Flaky puff pastry wrapped round sausage meat, scored on top,
-      // with the open end showing the meat inside the pastry layers.
-      ctx.rotate(-0.12);
-      const g = ctx.createLinearGradient(0, -8, 0, 8);
-      g.addColorStop(0, '#f2c46a'); g.addColorStop(0.55, '#e0a04a'); g.addColorStop(1, '#c07a34');
-      ctx.fillStyle = g;
-      // slightly lumpy top edge so it looks puffed
-      ctx.beginPath(); ctx.moveTo(-15, -3);
-      ctx.quadraticCurveTo(-15, -8, -10, -8);
-      ctx.quadraticCurveTo(-5, -9.2, 0, -8.2); ctx.quadraticCurveTo(5, -9.2, 10, -8);
-      ctx.lineTo(11, -8); ctx.lineTo(11, 8); ctx.lineTo(-11, 8);
-      ctx.quadraticCurveTo(-15, 8, -15, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
-      // flaky layers along the bottom
-      ctx.strokeStyle = 'rgba(255,236,190,0.75)'; ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (const yy of [4, 6]) { ctx.moveTo(-12, yy); for (let xx = -12; xx <= 9; xx += 3) ctx.quadraticCurveTo(xx + 1.5, yy - 0.8, xx + 3, yy); }
-      ctx.stroke();
-      // three diagonal score marks across the top
-      ctx.lineWidth = 1.8; ctx.strokeStyle = '#8a4a1e';
-      ctx.beginPath(); for (const k of [-8, -2, 4]) { ctx.moveTo(k - 1.5, -7.2); ctx.lineTo(k + 2.5, -1.5); } ctx.stroke();
-      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,236,190,0.7)';
-      ctx.beginPath(); for (const k of [-8, -2, 4]) { ctx.moveTo(k - 0.4, -7.2); ctx.lineTo(k + 3.4, -2); } ctx.stroke();
-      // the open end: rings of pastry with the meat in the middle
-      ctx.lineWidth = 2; ctx.strokeStyle = OUT;
-      ctx.fillStyle = '#f6dfa0'; ctx.beginPath(); ctx.ellipse(11, 0, 5, 8, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = '#d9a95a'; ctx.lineWidth = 0.9;
-      ctx.beginPath(); ctx.ellipse(11, 0, 3.9, 6.6, 0, 0, TAU); ctx.stroke();
-      ctx.fillStyle = '#b97a5c'; ctx.beginPath(); ctx.ellipse(11, 0.3, 2.9, 5.1, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#e3a08a'; [[10.2, -2.2], [12, 1], [10.6, 2.8]].forEach(([a, b]) => { ctx.beginPath(); ctx.arc(a, b, 0.8, 0, TAU); ctx.fill(); });
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; roundRect(ctx, -11, -6, 8, 2, 1); ctx.fill();
-      break;
-    }
     case 'fish': {
       // a plump silvery-blue fish
       ctx.rotate(-0.15);
@@ -2702,286 +2647,221 @@ function drawFood(kind, x, y, rot, s) {
       ctx.fillStyle = '#ff2a3a'; ctx.beginPath(); ctx.arc(15, 0, 2.2, 0, TAU); ctx.fill();
       break;
     }
-    case 'pizza': {
-      ctx.fillStyle = '#ffd65a';
-      ctx.beginPath(); ctx.moveTo(-12, -10); ctx.lineTo(12, -10); ctx.lineTo(0, 14); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#e8a650'; roundRect(ctx, -14, -14, 28, 7, 3.5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#c8382a'; [[-4, -3], [4, -2], [0, 5]].forEach(([a, b]) => { ctx.beginPath(); ctx.arc(a, b, 2.6, 0, TAU); ctx.fill(); });
-      ctx.fillStyle = '#ffd65a'; ctx.beginPath(); ctx.moveTo(2, 9); ctx.quadraticCurveTo(3, 15, 1.5, 17); ctx.quadraticCurveTo(0, 14, 0.5, 10); ctx.fill();
-      break;
-    }
-    case 'mustard': case 'piccalilli': {
-      const pic = kind === 'piccalilli';
-      ctx.fillStyle = pic ? '#c8c040' : '#ffd23c'; roundRect(ctx, -10, -9, 20, 21, 5); ctx.fill(); ctx.stroke();
-      if (pic) { ctx.fillStyle = '#6a8a2a'; [[-4, 2], [3, 6], [4, -2], [-3, 8]].forEach(([a, b]) => ctx.fillRect(a, b, 3, 3)); }
-      ctx.fillStyle = '#fff6e8'; roundRect(ctx, -8, -3, 16, 7, 2); ctx.fill();
-      ctx.fillStyle = pic ? '#6a8a2a' : '#e0455b'; ctx.font = `bold 5px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(pic ? 'PICCA' : 'HOT!', 0, 0.8);
-      ctx.fillStyle = '#e0455b'; roundRect(ctx, -9, -14, 18, 6, 2); ctx.fill(); ctx.stroke();
-      break;
-    }
-    case 'tea': {
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(10, -8); ctx.lineTo(8, 10); ctx.lineTo(-8, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(11, 0, 4.5, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-      ctx.fillStyle = '#b07040'; ctx.beginPath(); ctx.ellipse(0, -8, 9, 2.5, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#ff8fc8'; ctx.fillRect(-8, -1, 16, 3);
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5;
-      const t = game.time;
-      for (const dx of [-3, 3]) { ctx.beginPath(); ctx.moveTo(dx, -12); ctx.quadraticCurveTo(dx + Math.sin(t * 3 + dx) * 3, -17, dx, -22); ctx.stroke(); }
-      break;
-    }
-    case 'gravy': {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.moveTo(-13, -4); ctx.quadraticCurveTo(-12, 8, 0, 8); ctx.quadraticCurveTo(10, 8, 12, -2); ctx.lineTo(18, -7); ctx.lineTo(8, -5); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.ellipse(-1, -4, 11, 2.5, 0, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(15, -6); ctx.quadraticCurveTo(17, 0, 15, 3); ctx.quadraticCurveTo(13, 0, 15, -6); ctx.fill();
-      ctx.strokeStyle = OUT; ctx.beginPath(); ctx.arc(-13, 1, 4, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke();
-      ctx.fillStyle = '#ffd38a'; roundRect(ctx, -6, 9, 12, 3, 1.5); ctx.fill();
-      break;
-    }
-    case 'chilli': {
-      ctx.rotate(0.5);
-      ctx.fillStyle = '#e0352a';
-      ctx.beginPath(); ctx.moveTo(-12, -2); ctx.quadraticCurveTo(0, -9, 12, 2); ctx.quadraticCurveTo(14, 6, 10, 6); ctx.quadraticCurveTo(0, 2, -12, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#5aa04a'; roundRect(ctx, -16, -3, 6, 7, 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-6, -4, 8, 2);
-      break;
-    }
-    case 'meatball': {
-      ctx.fillStyle = '#8a4a2a'; ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#c8382a'; ctx.beginPath(); ctx.arc(0, -4, 9, Math.PI * 1.05, Math.PI * 1.95); ctx.quadraticCurveTo(4, 0, 0, -1); ctx.quadraticCurveTo(-4, 1, -8.6, -6.5); ctx.fill();
-      ctx.fillStyle = '#5aa04a'; ctx.beginPath(); ctx.ellipse(2, -9, 3, 1.6, 0.4, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(-4, 3, 2, 0, TAU); ctx.fill();
-      break;
-    }
-    case 'garlicbread': {
-      ctx.rotate(-0.15);
-      ctx.fillStyle = '#e8b860'; roundRect(ctx, -15, -6, 30, 12, 5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff0c0'; roundRect(ctx, -12, -6, 24, 5, 2.5); ctx.fill();
-      ctx.fillStyle = '#5aa04a'; [[-8, -4], [-2, -3], [5, -4], [9, -3]].forEach(([a, b]) => ctx.fillRect(a, b, 2, 1.5));
-      ctx.strokeStyle = '#b8823a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-5, 5); ctx.moveTo(4, 0); ctx.lineTo(4, 5); ctx.stroke();
-      break;
-    }
-    case 'olive': {
-      ctx.fillStyle = '#4a5a24'; ctx.beginPath(); ctx.ellipse(0, 0, 9, 11, 0.3, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#e0455b'; ctx.beginPath(); ctx.arc(1, -3, 3, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.ellipse(-3, 3, 2, 3, 0.3, 0, TAU); ctx.fill();
-      break;
-    }
   }
   ctx.restore();
 }
 
-/* --- old, slow people (and their equivalents in other universes) --- */
+/* --- dogs, stray tomcats and their airborne friends --- */
 function drawHazards(cam) {
   for (const hz of game.hazards) {
     const q = hazardPos(hz), sy = q.y - cam;
     if (sy < -100 || sy > H + 100) continue;
     const dir = hz.dir || 1;
     switch (hz.kind) {
-      case 'pensioner': drawOldie(q.x, sy, dir, hz.t, 'uk'); break;
-      case 'nonna': drawOldie(q.x, sy, dir, hz.t, 'nonna'); break;
-      case 'scooter': drawScooter(q.x, sy, dir, hz.t, false); break;
-      case 'vespa': drawScooter(q.x, sy, dir, hz.t, true); break;
-      case 'queue': drawQueue(q.x, sy, dir, hz.t); break;
-      case 'snail': drawSnail(q.x, sy, dir, hz.t, 1); break;
-      case 'balloon': drawBalloon(q.x, sy, hz.t, 'uk'); break;
-      case 'pizzaballoon': drawBalloon(q.x, sy, hz.t, 'nonna'); break;
-      case 'potsnail': drawPotSnail(q.x, sy, dir, hz.t); break;
-      case 'jetzimmer': drawJetZimmer(q.x, sy, dir, hz.t); break;
+      case 'dog': drawDog(q.x, sy, dir, hz.t, 'terrier'); break;
+      case 'bulldog': drawDog(q.x, sy, dir, hz.t, 'bulldog'); break;
+      case 'tomcat': drawTomcat(q.x, sy, dir, hz.t); break;
+      case 'dogballoon': drawDogBalloon(q.x, sy, hz.t); break;
+      case 'spacedog': drawSpaceDog(q.x, sy, dir, hz.t); break;
     }
   }
 }
 
-// A pensioner shuffling along. style 'uk' (cardigan, flat cap, walking stick)
-// or 'nonna' (black dress, headscarf, rolling pin).
-function drawOldie(x, y, dir, t, style, scale = 1) {
+const DOGS = {
+  terrier: { fur: '#d9b07a', patch: '#8a5a3a', snout: '#f3dcb4', collar: '#e0455b', w: 26, h: 12, legs: 7, head: 8 },
+  bulldog: { fur: '#b9a596', patch: '#7a6a62', snout: '#e2d4c8', collar: '#3a3a46', w: 34, h: 15, legs: 6, head: 10 },
+};
+// A dog trotting along, feet at y. Faces +x before the dir flip.
+function drawDog(x, y, dir, t, breed, scale = 1) {
+  const D = DOGS[breed], bull = breed === 'bulldog';
   ctx.save(); ctx.translate(x, y); ctx.scale(dir * scale, scale);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  const shuffle = Math.sin(t * 5) * 2, bob = Math.abs(Math.sin(t * 5)) * 1;
-  const nonna = style === 'nonna';
-  // legs
-  ctx.strokeStyle = nonna ? '#3a3040' : '#6a5a50'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(-2, -14); ctx.lineTo(-3 + shuffle, -1); ctx.moveTo(2, -14); ctx.lineTo(3 - shuffle, -1); ctx.stroke();
-  ctx.fillStyle = '#3a2a2a'; ctx.beginPath(); ctx.ellipse(-2 + shuffle, -1, 4, 2, 0, 0, TAU); ctx.ellipse(4 - shuffle, -1, 4, 2, 0, 0, TAU); ctx.fill();
-  // body, hunched forward
-  ctx.save(); ctx.translate(0, -bob); ctx.rotate(0.25);
-  ctx.fillStyle = nonna ? '#2e2838' : '#c49bff';
-  ctx.strokeStyle = OUT; ctx.lineWidth = 1.8;
-  roundRect(ctx, -8, -34, 16, 22, 6); ctx.fill(); ctx.stroke();
-  if (!nonna) { ctx.fillStyle = '#ffe066'; [-27, -21, -15].forEach(by => { ctx.beginPath(); ctx.arc(3, by, 1.2, 0, TAU); ctx.fill(); }); }
-  else { ctx.fillStyle = '#fff'; roundRect(ctx, -6, -24, 12, 10, 3); ctx.fill(); }      // apron
-  // head
-  ctx.fillStyle = '#ffd9bd'; ctx.beginPath(); ctx.arc(2, -40, 7, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#2b1740'; ctx.beginPath(); ctx.arc(5, -41, 1, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#2b1740'; ctx.lineWidth = 1.2;                   // grumpy frown
-  ctx.beginPath(); ctx.arc(5, -35.5, 2.2, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(3, -44); ctx.lineTo(7, -43); ctx.stroke();
-  ctx.strokeStyle = '#c0c0c8'; ctx.lineWidth = 1.5;                   // specs
-  ctx.beginPath(); ctx.arc(5.5, -41, 2.3, 0, TAU); ctx.stroke();
-  if (nonna) {
-    ctx.fillStyle = '#4a3a5e';
-    ctx.beginPath(); ctx.arc(2, -41, 8.5, Math.PI * 0.95, Math.PI * 2.05); ctx.lineTo(-5, -34); ctx.closePath(); ctx.fill();
-  } else {
-    ctx.fillStyle = '#eeeeee'; ctx.beginPath(); ctx.arc(-3, -41, 4, 0, TAU); ctx.fill();   // white hair tuft
-    ctx.fillStyle = '#6a5a50'; ctx.beginPath(); ctx.ellipse(2, -46, 8, 3.2, 0, Math.PI, TAU); ctx.fill();  // flat cap
-    roundRect(ctx, 2, -47, 10, 3, 1.5); ctx.fill();
-  }
-  // arm and stick / rolling pin
-  ctx.strokeStyle = nonna ? '#2e2838' : '#c49bff'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(2, -28); ctx.lineTo(10, -20); ctx.stroke();
-  ctx.restore();
-  if (nonna) {
-    ctx.save(); ctx.translate(12, -24 - bob); ctx.rotate(-0.6 + Math.sin(t * 3) * 0.3);
-    ctx.fillStyle = '#d9a868'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.5;
-    roundRect(ctx, -3, -12, 6, 24, 3); ctx.fill(); ctx.stroke();
-    ctx.restore();
-  } else {
-    ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(13, -21 - bob); ctx.lineTo(14 + shuffle * 0.5, 0); ctx.stroke();
-    ctx.beginPath(); ctx.arc(10, -21 - bob, 3, Math.PI, TAU); ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawScooter(x, y, dir, t, vespa) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
-  const wob = Math.sin(t * 12) * 0.6;
-  // wheels
-  ctx.fillStyle = '#2b2b33';
-  for (const wx of [-12, 12]) { ctx.beginPath(); ctx.arc(wx, -5, 5, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = '#c0c0c8'; for (const wx of [-12, 12]) { ctx.beginPath(); ctx.arc(wx, -5, 1.8, 0, TAU); ctx.fill(); }
+  const trot = Math.sin(t * (bull ? 7 : 13)), bob = Math.abs(trot) * 1.2;
+  const bw = D.w, bh = D.h, top = -D.legs - bh - bob;
+  const bark = Math.sin(t * 2.3) > 0.82;
+  // tail, wagging
+  const wag = Math.sin(t * 16) * 4;
+  ctx.strokeStyle = OUT; ctx.lineWidth = 5.5;
+  ctx.beginPath(); ctx.moveTo(-bw / 2 + 2, top + 3); ctx.quadraticCurveTo(-bw / 2 - 5, top - 2, -bw / 2 - 4 + wag, top - (bull ? 4 : 10)); ctx.stroke();
+  ctx.strokeStyle = D.fur; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-bw / 2 + 2, top + 3); ctx.quadraticCurveTo(-bw / 2 - 5, top - 2, -bw / 2 - 4 + wag, top - (bull ? 4 : 10)); ctx.stroke();
+  // legs: front and back pairs swing opposite ways
+  const legX = [-bw / 2 + 5, -bw / 2 + 10, bw / 2 - 9, bw / 2 - 4];
+  legX.forEach((lx, k) => {
+    const sw = (k % 2 ? 1 : -1) * trot * 2.5;
+    ctx.strokeStyle = OUT; ctx.lineWidth = bull ? 7 : 6;
+    ctx.beginPath(); ctx.moveTo(lx, top + bh - 2); ctx.lineTo(lx + sw, -1); ctx.stroke();
+    ctx.strokeStyle = k < 2 ? D.patch : D.fur; ctx.lineWidth = bull ? 4.5 : 3.5;
+    ctx.beginPath(); ctx.moveTo(lx, top + bh - 2); ctx.lineTo(lx + sw, -1); ctx.stroke();
+  });
   // body
-  ctx.fillStyle = vespa ? '#5ab07a' : '#e0455b';
-  ctx.beginPath(); ctx.moveTo(-18, -8); ctx.lineTo(16, -8); ctx.quadraticCurveTo(20, -10, 18, -16); ctx.lineTo(-14, -16); ctx.quadraticCurveTo(-20, -14, -18, -8); ctx.fill(); ctx.stroke();
-  // steering column + basket
-  ctx.strokeStyle = '#8a8a96'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(13, -14); ctx.lineTo(16, -30); ctx.stroke();
-  ctx.strokeStyle = OUT; ctx.lineWidth = 1.5;
-  if (!vespa) {
-    ctx.fillStyle = '#c8a070'; ctx.fillRect(14, -32, 9, 7); ctx.strokeRect(14, -32, 9, 7);
-    ctx.fillStyle = '#9be564'; ctx.beginPath(); ctx.arc(18, -33, 2.5, 0, TAU); ctx.fill();      // a cabbage, obviously
-    ctx.fillStyle = '#ff9a3c'; ctx.beginPath(); ctx.arc(10, -38, 2, 0, TAU); ctx.fill();        // little orange flag
-    ctx.strokeStyle = '#8a8a96'; ctx.beginPath(); ctx.moveTo(-15, -16); ctx.lineTo(-15, -40); ctx.stroke();
-    ctx.fillStyle = '#ff9a3c'; ctx.beginPath(); ctx.moveTo(-15, -40); ctx.lineTo(-7, -37); ctx.lineTo(-15, -34); ctx.fill();
+  ctx.fillStyle = D.fur; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+  roundRect(ctx, -bw / 2, top, bw, bh, bh / 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = D.patch; ctx.beginPath(); ctx.ellipse(-bw * 0.12, top + bh * 0.4, bw * 0.18, bh * 0.32, 0.2, 0, TAU); ctx.fill();
+  // head
+  const hr = D.head, hx = bw / 2 + (bull ? 1 : 2), hy = top - (bull ? 1 : 4);
+  ctx.fillStyle = D.collar; roundRect(ctx, hx - hr * 0.9, hy + hr * 0.45, 5, hr * 0.9, 2); ctx.fill(); ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.lineWidth = 2;
+  if (bull) { ctx.fillStyle = '#c0c8d8'; for (let k = 0; k < 2; k++) { ctx.beginPath(); ctx.arc(hx - hr * 0.9 + 2.5, hy + hr * 0.6 + k * 4, 1.3, 0, TAU); ctx.fill(); } }
+  ctx.fillStyle = D.fur; ctx.beginPath();
+  if (bull) ctx.ellipse(hx, hy, hr * 1.1, hr * 0.9, 0, 0, TAU); else ctx.arc(hx, hy, hr, 0, TAU);
+  ctx.fill(); ctx.stroke();
+  // snout & nose
+  ctx.fillStyle = D.snout;
+  ctx.beginPath(); ctx.ellipse(hx + hr * 0.7, hy + hr * 0.25, hr * (bull ? 0.6 : 0.65), hr * 0.45, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(hx + hr * 1.22, hy + hr * 0.05, 2.2, 1.7, 0, 0, TAU); ctx.fill();
+  if (bark) {                                                   // mouth open, mid-bark
+    ctx.fillStyle = '#7a2a3a'; ctx.beginPath(); ctx.ellipse(hx + hr * 0.75, hy + hr * 0.62, 3, 2.2, 0, 0, TAU); ctx.fill();
+  } else if (bull) {                                            // underbite with two little teeth
+    ctx.fillStyle = '#fff'; ctx.fillRect(hx + hr * 0.5, hy + hr * 0.5, 1.6, 2); ctx.fillRect(hx + hr * 0.9, hy + hr * 0.5, 1.6, 2);
+  } else {
+    ctx.fillStyle = '#ff7a8a'; ctx.beginPath(); ctx.ellipse(hx + hr * 0.6, hy + hr * 0.75 + Math.abs(trot), 1.8, 2.8, 0, 0, TAU); ctx.fill();   // tongue
   }
+  // eye and a cross eyebrow
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(hx + hr * 0.25, hy - hr * 0.3, 1.5, 0, TAU); ctx.fill();
+  ctx.strokeStyle = OUT; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(hx - hr * 0.1, hy - hr * 0.75); ctx.lineTo(hx + hr * 0.55, hy - hr * 0.5); ctx.stroke();
+  // ear
+  ctx.fillStyle = D.patch; ctx.lineWidth = 1.8;
+  ctx.save(); ctx.translate(hx - hr * 0.35, hy - hr * 0.55); ctx.rotate(bull ? -0.9 : 0.35 + trot * 0.15);
+  ctx.beginPath(); ctx.ellipse(0, bull ? -1 : 3, bull ? 3 : 3.2, bull ? 2.6 : 6, 0, 0, TAU); ctx.fill(); ctx.stroke();
   ctx.restore();
-  // the rider, sitting
-  ctx.save(); ctx.translate(x - dir * 2, y - 12 + wob);
-  drawOldie(0, 0, dir, t * 0.2, vespa ? 'nonna' : 'uk', 0.85);
   ctx.restore();
 }
 
-// Pork Pie World: a queue of pie-shop customers, shuffling one step at a time.
-function drawQueue(x, y, dir, t) {
+// A scruffy stray tomcat on the prowl: torn ear, scar, one squinty eye.
+function drawTomcat(x, y, dir, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const step = Math.sin(t * 6), fur = '#7d7690', dark = '#55506a';
+  // tail, up and kinked
+  const sw = Math.sin(t * 2.5) * 3;
+  const tail = () => { ctx.beginPath(); ctx.moveTo(-11, -16); ctx.quadraticCurveTo(-20, -20, -18 + sw, -32); ctx.lineTo(-14 + sw, -36); };
+  ctx.strokeStyle = OUT; ctx.lineWidth = 6.5; tail(); ctx.stroke();
+  ctx.strokeStyle = fur; ctx.lineWidth = 3.8; tail(); ctx.stroke();
+  // legs
+  [-8, -4, 6, 10].forEach((lx, k) => {
+    const s2 = (k % 2 ? 1 : -1) * step * 2;
+    ctx.strokeStyle = OUT; ctx.lineWidth = 5.5; ctx.beginPath(); ctx.moveTo(lx, -12); ctx.lineTo(lx + s2, -1); ctx.stroke();
+    ctx.strokeStyle = k < 2 ? dark : fur; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(lx, -12); ctx.lineTo(lx + s2, -1); ctx.stroke();
+  });
+  // body, back hunched
+  ctx.fillStyle = fur; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-13, -12); ctx.quadraticCurveTo(-12, -24, 0, -23); ctx.quadraticCurveTo(10, -22, 13, -14);
+  ctx.quadraticCurveTo(12, -9, 0, -9); ctx.quadraticCurveTo(-12, -8, -13, -12); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = dark; ctx.lineWidth = 1.8;
+  ctx.beginPath(); for (const sx of [-7, -2, 3]) { ctx.moveTo(sx, -22.5); ctx.lineTo(sx + 1, -17); } ctx.stroke();
+  // head
+  const hx = 14, hy = -22;
+  ctx.fillStyle = fur; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(hx - 6, hy - 4); ctx.lineTo(hx - 5, hy - 12); ctx.lineTo(hx - 1, hy - 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx + 2, hy - 6); ctx.lineTo(hx + 5, hy - 12); ctx.lineTo(hx + 6, hy - 9); ctx.lineTo(hx + 5.5, hy - 8); ctx.lineTo(hx + 7, hy - 4); ctx.closePath(); ctx.fill(); ctx.stroke();   // the torn one
+  ctx.beginPath(); ctx.ellipse(hx, hy, 8, 7, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  // face: one yellow slit eye, one scarred shut
+  ctx.fillStyle = '#ffd23c'; ctx.beginPath(); ctx.ellipse(hx + 3.5, hy - 1.5, 2.2, 2, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = OUT; ctx.fillRect(hx + 3.1, hy - 3.3, 0.9, 3.6);
+  ctx.strokeStyle = OUT; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(hx - 3.5, hy - 1.5); ctx.lineTo(hx - 0.5, hy - 1); ctx.stroke();
+  ctx.strokeStyle = '#ff9fb5'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(hx - 3, hy - 4.5); ctx.lineTo(hx - 1, hy + 1.5); ctx.stroke();
+  ctx.strokeStyle = OUT; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(hx + 1, hy + 3.5); ctx.lineTo(hx + 4, hy + 3); ctx.lineTo(hx + 6, hy + 4); ctx.stroke();      // a sneer
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(hx + 4, hy + 3); ctx.lineTo(hx + 4.6, hy + 5); ctx.lineTo(hx + 5.2, hy + 3.3); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(hx + 6, hy + 1); ctx.lineTo(hx + 12, hy - 0.5); ctx.moveTo(hx + 6, hy + 2); ctx.lineTo(hx + 12, hy + 3); ctx.stroke();
+  ctx.restore();
+}
+
+// A dog in a hot-air balloon, ears flapping, barking down at her.
+function drawDogBalloon(x, y, t) {
   ctx.save(); ctx.translate(x, y);
-  // the sign they're queueing for
-  ctx.strokeStyle = '#6a4226'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(dir * 26, 0); ctx.lineTo(dir * 26, -30); ctx.stroke();
-  ctx.fillStyle = '#fff6e8'; roundRect(ctx, dir * 26 - 13, -42, 26, 13, 3); ctx.fill();
-  ctx.strokeStyle = OUT; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.fillStyle = '#c2335a'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('PIES', dir * 26, -35.5);
-  ctx.restore();
-  const cols = [['#8a5a30', '#c8a070'], ['#5a6a8a', '#e8dcc8'], ['#7a3a4a', '#ffd38a']];
-  for (let k = 0; k < 3; k++) {
-    const px = x - dir * (k * 14 - 10), step = Math.max(0, Math.sin(t * 2 - k)) * 1.5;
-    ctx.save(); ctx.translate(px, y - step);
-    ctx.scale(dir, 1);
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#3a2a2a'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-2, -10); ctx.lineTo(-2, 0); ctx.moveTo(2, -10); ctx.lineTo(2, 0); ctx.stroke();
-    ctx.fillStyle = cols[k][0]; ctx.strokeStyle = OUT; ctx.lineWidth = 1.5;
-    roundRect(ctx, -6, -28, 12, 19, 5); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffd9bd'; ctx.beginPath(); ctx.arc(1, -32, 5.5, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = cols[k][1]; ctx.beginPath(); ctx.arc(1, -34, 5.8, Math.PI, TAU); ctx.fill();        // hats & hair
-    ctx.fillStyle = '#2b1740'; ctx.beginPath(); ctx.arc(3.5, -32, 0.9, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#2b1740'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(2, -29); ctx.lineTo(5, -29.5); ctx.stroke();
-    ctx.restore();
-  }
-}
-
-function drawSnail(x, y, dir, t, s) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(dir * s, s);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
-  const stretch = Math.sin(t * 1.5) * 2;
-  ctx.fillStyle = '#c8b08a';
-  ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(16 + stretch, 0); ctx.quadraticCurveTo(24 + stretch, -2, 20 + stretch, -14); ctx.quadraticCurveTo(14, -10, 8, -6); ctx.lineTo(-20, -4); ctx.closePath(); ctx.fill(); ctx.stroke();
-  // eye stalks
-  ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.moveTo(18 + stretch, -12); ctx.lineTo(16 + stretch, -24); ctx.moveTo(21 + stretch, -12); ctx.lineTo(24 + stretch, -22); ctx.stroke();
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(16 + stretch, -25, 3, 0, TAU); ctx.arc(24 + stretch, -23, 3, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#2b1740'; ctx.beginPath(); ctx.arc(17 + stretch, -25, 1.3, 0, TAU); ctx.arc(25 + stretch, -23, 1.3, 0, TAU); ctx.fill();
-  // spiral shell
-  ctx.fillStyle = '#c8823a'; ctx.beginPath(); ctx.arc(-4, -16, 14, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = '#8a5020'; ctx.lineWidth = 2;
-  ctx.beginPath(); for (let k = 0; k < 28; k++) { const a = k * 0.4, r = 12 - k * 0.42; ctx.lineTo(-4 + Math.cos(a) * r, -16 + Math.sin(a) * r); } ctx.stroke();
-  // a tiny flat cap, he's been around a while
-  ctx.fillStyle = '#6a5a50'; ctx.beginPath(); ctx.ellipse(20 + stretch, -14, 6, 2.5, 0, Math.PI, TAU); ctx.fill();
-  ctx.restore();
-}
-
-function drawBalloon(x, y, t, who) {
-  ctx.save(); ctx.translate(x, y);
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
-  // envelope
-  const cols = who === 'nonna' ? ['#e0455b', '#fff6e8', '#5ab07a'] : ['#ff8fc8', '#ffe066', '#7ad3ff'];
+  const cols = { human: ['#ff8fc8', '#ffe066', '#7ad3ff'], yarn: ['#e85a8a', '#ffd65a', '#8a6ad0'], dog: ['#e0455b', '#fff6e8', '#4a8ad0'] }[themeId()];
   ctx.save();
   ctx.beginPath(); ctx.arc(0, -40, 26, Math.PI * 0.85, Math.PI * 2.15); ctx.lineTo(9, -10); ctx.lineTo(-9, -10); ctx.closePath();
   ctx.clip();
   for (let k = 0; k < 7; k++) { ctx.fillStyle = cols[k % 3]; ctx.fillRect(-28 + k * 8, -70, 8, 62); }
-  if (who === 'nonna') { ctx.fillStyle = '#c8382a'; [[-10, -48], [8, -40], [-2, -30]].forEach(([a, b]) => { ctx.beginPath(); ctx.arc(a, b, 4, 0, TAU); ctx.fill(); }); }
   ctx.restore();
   ctx.beginPath(); ctx.arc(0, -40, 26, Math.PI * 0.85, Math.PI * 2.15); ctx.lineTo(9, -10); ctx.lineTo(-9, -10); ctx.closePath(); ctx.stroke();
+  // a bone badge on the envelope
+  ctx.fillStyle = '#fff6e8'; ctx.lineWidth = 1.3;
+  ctx.beginPath(); roundRect(ctx, -7, -44, 14, 4, 2); ctx.fill(); ctx.stroke();
+  for (const bx of [-7, 7]) for (const by of [-44, -40]) { ctx.beginPath(); ctx.arc(bx, by, 2.2, 0, TAU); ctx.fill(); ctx.stroke(); }
+  ctx.fillStyle = '#fff6e8'; roundRect(ctx, -6.5, -43.3, 13, 2.6, 1.3); ctx.fill();
   // ropes + basket
   ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-9, -10); ctx.lineTo(-9, 6); ctx.moveTo(9, -10); ctx.lineTo(9, 6); ctx.stroke();
-  // pensioner in the basket, shaking a fist
-  ctx.fillStyle = '#ffd9bd'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 2, 6, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = who === 'nonna' ? '#4a3a5e' : '#eeeeee'; ctx.beginPath(); ctx.arc(0, 0, 6.5, Math.PI, TAU); ctx.fill();
-  ctx.fillStyle = '#2b1740'; ctx.beginPath(); ctx.arc(-2, 2, 0.9, 0, TAU); ctx.arc(2, 2, 0.9, 0, TAU); ctx.fill();
-  const fist = Math.sin(t * 6) * 3;
-  ctx.fillStyle = '#ffd9bd'; ctx.beginPath(); ctx.arc(9, -2 + fist, 2.5, 0, TAU); ctx.fill(); ctx.stroke();
+  // the dog, peering over the edge
+  const flap = Math.sin(t * 8) * 0.4;
+  ctx.fillStyle = '#d9b07a'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, 1, 7, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#8a5a3a';
+  for (const side of [-1, 1]) { ctx.save(); ctx.translate(side * 6, -2); ctx.rotate(side * (0.6 + flap)); ctx.beginPath(); ctx.ellipse(0, 3, 2.4, 5, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); }
+  ctx.fillStyle = '#f3dcb4'; ctx.beginPath(); ctx.ellipse(0, 4, 4, 3, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(-2.4, -0.5, 1, 0, TAU); ctx.arc(2.4, -0.5, 1, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 2.6, 1.8, 1.3, 0, 0, TAU); ctx.fill();
+  if (Math.sin(t * 2.3) > 0.6) { ctx.fillStyle = '#7a2a3a'; ctx.beginPath(); ctx.ellipse(0, 6, 2, 1.5, 0, 0, TAU); ctx.fill(); }
   ctx.fillStyle = '#b07a40'; roundRect(ctx, -11, 6, 22, 14, 3); ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.stroke();
   ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-11, 13); ctx.lineTo(11, 13); ctx.stroke();
   ctx.restore();
 }
 
-function drawPotSnail(x, y, dir, t) {
-  // a snail riding a flying teapot, puffing steam
-  ctx.save(); ctx.translate(x, y + Math.sin(t * 3) * 2);
-  ctx.save(); ctx.scale(dir, 1);
-  ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.lineCap = 'round';
-  ctx.fillStyle = '#fff6e8'; ctx.beginPath(); ctx.ellipse(0, 4, 22, 15, 0, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ff8fc8'; ctx.fillRect(-18, 2, 36, 4);
-  ctx.beginPath(); ctx.moveTo(20, 2); ctx.quadraticCurveTo(32, -2, 34, -10); ctx.stroke();
-  ctx.beginPath(); ctx.arc(-23, 4, 7, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke();
+// A very good space dog: jetpack, fishbowl helmet, absolutely thrilled.
+function drawSpaceDog(x, y, dir, t) {
+  const by = y + 14 + Math.sin(t * 4) * 2;
+  ctx.save(); ctx.translate(x, by); ctx.scale(dir, 1);
+  // jetpack and flame
+  const fl = 8 + Math.sin(t * 40) * 3;
+  ctx.fillStyle = '#ffd65a'; ctx.beginPath(); ctx.moveTo(-14, -8); ctx.lineTo(-17, -8 + fl * 1.6); ctx.lineTo(-20, -8); ctx.fill();
+  ctx.fillStyle = '#ff6a3c'; ctx.beginPath(); ctx.moveTo(-15, -8); ctx.lineTo(-17, -8 + fl); ctx.lineTo(-19, -8); ctx.fill();
+  ctx.fillStyle = '#c0c8d8'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.5;
+  roundRect(ctx, -22, -24, 9, 16, 3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e0455b'; ctx.beginPath(); ctx.arc(-17.5, -20, 1.6, 0, TAU); ctx.fill();
   ctx.restore();
-  if (Math.random() < 0.2) addParticle({ type: 'dust', x: x - dir * 26, y: y + game.cam + 4, vx: -dir * 40, vy: 20, r0: 3, r1: 9, life: 0, max: 0.5, color: '#fff6e8' });
-  drawSnail(0, -8, dir, t, 0.65);
+  drawDog(x, by, dir, t * 0.4, 'terrier', 0.9);
+  // fishbowl helmet round the head
+  ctx.save(); ctx.translate(x + dir * 14, by - 24);
+  ctx.fillStyle = 'rgba(200,235,255,0.25)'; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(0, 0, 8, -2.6, -1.8); ctx.stroke();
   ctx.restore();
 }
 
-function drawJetZimmer(x, y, dir, t) {
-  ctx.save(); ctx.translate(x, y + Math.sin(t * 4) * 2); ctx.scale(dir, 1);
+/* --- mice --- */
+function drawMice(cam) {
+  const space = !!(theme().zones[game.zoneIdx] && theme().zones[game.zoneIdx].space);
+  for (const m of game.mice) {
+    const pl = m.plat, sy = pl.y - cam;
+    if (sy < -40 || sy > H + 40) continue;
+    drawMouse(pl.x + m.off * pl.w, sy, m.dir, m.t, m.flee > 0, space);
+  }
+}
+function drawMouse(x, y, dir, t, fleeing, helmet) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(dir * 1.3, 1.3);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  // jet flame
-  const fl = 8 + Math.sin(t * 40) * 3;
-  ctx.fillStyle = '#ffd65a'; ctx.beginPath(); ctx.moveTo(-20, 12); ctx.lineTo(-20 - fl * 1.6, 15); ctx.lineTo(-20, 18); ctx.fill();
-  ctx.fillStyle = '#ff6a3c'; ctx.beginPath(); ctx.moveTo(-20, 13); ctx.lineTo(-20 - fl, 15); ctx.lineTo(-20, 17); ctx.fill();
-  // zimmer frame
-  ctx.strokeStyle = '#c0c8d8'; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(18, -6); ctx.moveTo(8, -6); ctx.lineTo(6, 20); ctx.moveTo(18, -6); ctx.lineTo(20, 20); ctx.stroke();
-  ctx.fillStyle = '#e0455b'; ctx.beginPath(); ctx.arc(6, 21, 2.5, 0, TAU); ctx.arc(20, 21, 2.5, 0, TAU); ctx.fill();   // tennis balls on the feet
-  ctx.fillStyle = '#8a8a96'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.5;
-  roundRect(ctx, -22, 10, 12, 10, 3); ctx.fill(); ctx.stroke();                                                      // the tiny jet engine
+  const scurry = fleeing ? Math.sin(t * 40) : Math.sin(t * 12) * 0.4;
+  // tail
+  ctx.strokeStyle = '#ff9fb5'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(-7, -3); ctx.bezierCurveTo(-13, -2, -12, -10 + scurry * 2, -18, -8 + scurry * 3); ctx.stroke();
+  // feet
+  ctx.fillStyle = '#ff9fb5';
+  for (const fx of [-3, 4]) { ctx.beginPath(); ctx.ellipse(fx + scurry * 1.5 * (fx > 0 ? 1 : -1), -0.8, 2, 1.1, 0, 0, TAU); ctx.fill(); }
+  // body
+  ctx.fillStyle = '#b8b0c4'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(-8, -1.5); ctx.quadraticCurveTo(-9, -11, 1, -10); ctx.quadraticCurveTo(7, -9, 10, -3); ctx.lineTo(9, -1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ddd6e6'; ctx.beginPath(); ctx.ellipse(1, -3.5, 5, 2, 0, 0, TAU); ctx.fill();
+  // big round ear
+  ctx.fillStyle = '#b8b0c4'; ctx.beginPath(); ctx.arc(2.5, -10, 3.6, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffc2d1'; ctx.beginPath(); ctx.arc(2.6, -10, 2, 0, TAU); ctx.fill();
+  // eye, nose, whiskers
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(6, -6.2, 1.1, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#ff7a9a'; ctx.beginPath(); ctx.arc(10.3, -3.2, 1.3, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(43,23,64,0.5)'; ctx.lineWidth = 0.6;
+  ctx.beginPath(); ctx.moveTo(9, -3.5); ctx.lineTo(13, -5); ctx.moveTo(9, -3); ctx.lineTo(13, -2); ctx.stroke();
+  if (helmet) {
+    ctx.fillStyle = 'rgba(200,235,255,0.25)'; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(3, -6, 9, 0, TAU); ctx.fill(); ctx.stroke();
+  }
   ctx.restore();
-  drawOldie(x, y + 20 + Math.sin(t * 4) * 2, dir, t * 0.5, 'uk', 0.85);
-  // fishbowl space helmet
-  ctx.save(); ctx.translate(x + dir * 2, y - 14 + Math.sin(t * 4) * 2);
-  ctx.fillStyle = 'rgba(200,235,255,0.25)'; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(0, 0, 10, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(0, 0, 7, -2.6, -1.8); ctx.stroke();
-  ctx.restore();
+  if (fleeing) { ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', x, y - 26); }
 }
 
 /* --- seagulls --- */
@@ -3111,8 +2991,8 @@ function drawPlayerAt(x, y, scaleX = 1, scaleY = 1, rot = 0) {
 }
 
 /* The hero: a little ginger kitten. Big head, big eyes, white tummy and
-   paws, a waggy tail. In Pork Pie World she wears a tiny pork pie as a hat,
-   in Pizza World a slice of pizza. */
+   paws, a waggy tail. In Yarn World she wears a knitted bobble hat, and in
+   Dog World a pair of floppy dog ears, as a disguise. */
 const KIT = { fur: '#f6a456', dark: '#de7f34', light: '#fff4e6', pink: '#ff9fb5', inner: '#ffc2d1', eye: '#2a1a2e' };
 
 function drawCreature(p, tid) {
@@ -3198,9 +3078,36 @@ function drawCreature(p, tid) {
 
   if (p.chewT > 0) drawFood(p.lastFood || 'fish', fx + 10, hy + 8, -0.4, 0.42);
   const tid2 = tid;
-  if (tid2 === 'pie') drawFood('porkpie', hx - 1, hy - 14, -0.15, 0.62);           // a pork pie hat
-  if (tid2 === 'pizza') drawFood('pizza', hx, hy - 14, Math.PI + 0.25, 0.6);         // a pizza-slice hat
+  if (tid2 === 'yarn') drawBobbleHat(hx, hy);
+  if (tid2 === 'dog') drawDogEars(hx, hy);
   if (p.helmetOn) drawHelmet(p, hx, hy, 19);
+  ctx.restore();
+}
+
+// Yarn World: a stripy knitted bobble hat.
+function drawBobbleHat(hx, hy) {
+  ctx.save(); ctx.translate(hx, hy - 8); ctx.rotate(-0.12);
+  ctx.strokeStyle = OUT; ctx.lineWidth = 2;
+  ctx.save(); ctx.beginPath(); ctx.moveTo(-13, 2); ctx.quadraticCurveTo(-12, -14, 0, -14); ctx.quadraticCurveTo(12, -14, 13, 2); ctx.closePath(); ctx.clip();
+  ['#e85a8a', '#ffd65a', '#e85a8a', '#8a6ad0'].forEach((c, k) => { ctx.fillStyle = c; ctx.fillRect(-14, -15 + k * 4.5, 28, 4.5); });
+  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(-13, 2); ctx.quadraticCurveTo(-12, -14, 0, -14); ctx.quadraticCurveTo(12, -14, 13, 2); ctx.closePath(); ctx.stroke();
+  ctx.fillStyle = '#fff6e8'; roundRect(ctx, -14, -1, 28, 5, 2.5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffd65a'; ctx.beginPath(); ctx.arc(1, -16, 4.5, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+// Dog World: a headband with floppy dog ears. Nobody will ever know.
+function drawDogEars(hx, hy) {
+  ctx.save(); ctx.translate(hx, hy - 9);
+  ctx.strokeStyle = '#4a8ad0'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, 8, 14, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  ctx.strokeStyle = OUT; ctx.lineWidth = 2; ctx.fillStyle = '#8a5a3a';
+  const flap = Math.sin(game.time * 5) * 0.12;
+  for (const side of [-1, 1]) {
+    ctx.save(); ctx.translate(side * 12, -1); ctx.rotate(-side * (0.35 + flap));
+    ctx.beginPath(); ctx.ellipse(side * 3, 8, 4.2, 9, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
   ctx.restore();
 }
 
@@ -3225,18 +3132,9 @@ function drawHelmet(p, cx, cy, r) {
   ctx.restore();
 }
 
-// Shield ring, rush streaks, big-bounce pips: drawn around him.
+// Rush streaks and big-bounce pips: drawn around her.
 function drawPlayerFx(x, y) {
   const p = player, t = game.time, by = y - BODY_H / 2;
-  if (p.shieldT > 0) {
-    const pulse = 0.5 + 0.5 * Math.sin(t * 5), fade = p.shieldT < 1.5 ? (Math.sin(t * 20) > 0 ? 1 : 0.3) : 1;
-    ctx.save(); ctx.globalAlpha = fade;
-    ctx.strokeStyle = `rgba(122,211,255,${0.45 + 0.3 * pulse})`; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(x, by, 32 + pulse * 2, 42 + pulse * 2, 0, 0, TAU); ctx.stroke();
-    const a = t * 2.6, kind = { human: 'catnip', pie: 'tea', pizza: 'garlicbread' }[themeId()];
-    drawFood(kind, x + Math.cos(a) * 34, by + Math.sin(a) * 44, a + Math.PI / 2, 0.6);
-    ctx.restore();
-  }
   if (p.rushT > 0) {
     ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2;
     for (let k = 0; k < 6; k++) {
@@ -3350,6 +3248,10 @@ function wrapLines(str, size, maxW) {
 function bubbleAnchor(b, cam) {
   const tg = b.target;
   if (tg === 'player') return { x: player.x, y: player.y - cam - BODY_H - 12 };
+  if (tg.off !== undefined && !tg.kind) {                        // a mouse
+    if (!game.mice.includes(tg)) return null;
+    return { x: tg.plat.x + tg.off * tg.plat.w, y: tg.plat.y - cam - 22 };
+  }
   if (tg.plat !== undefined || tg.kind) {                        // a hazard
     if (!game.hazards.includes(tg)) return null;
     const [bx, by, bw] = hazardBox(tg);
@@ -3465,10 +3367,10 @@ function drawBellyMeter(x, y) {
 // Bottom-left: what power-ups are running.
 function drawPowerUps() {
   const p = player, C = CONFIG, x = 14, y = H - 26, w = Math.min(110, W * 0.3);
-  if (p.shieldT > 0) {
-    drawText('SHIELD', x, y - 16, 13, EFFECT_COLORS.shield, 'left');
+  if (p.laserT > 0) {
+    drawText('CHASING THE DOT', x, y - 16, 13, EFFECT_COLORS.laser, 'left');
     ctx.fillStyle = 'rgba(43,23,64,0.85)'; roundRect(ctx, x - 3, y - 3, w + 6, 14, 7); ctx.fill();
-    ctx.fillStyle = EFFECT_COLORS.shield; roundRect(ctx, x, y, Math.max(8, w * p.shieldT / C.shieldTime), 8, 4); ctx.fill();
+    ctx.fillStyle = EFFECT_COLORS.laser; roundRect(ctx, x, y, Math.max(8, w * p.laserT / C.laserTime), 8, 4); ctx.fill();
   }
   if (p.bigBounces > 0) drawText(`BIG BOUNCE x${p.bigBounces}`, W - 14, y + 2, 14, EFFECT_COLORS.bounce, 'right');
 }
@@ -3527,7 +3429,7 @@ function drawBanner() {
 }
 
 function drawTitle() {
-  const title = 'PIE IN THE SKY';
+  const title = 'SKY SCRATCHER';
   const size = fitSize(title, 58, W - 30);
   ctx.font = `bold ${size}px ${FONT}`;
   const total = ctx.measureText(title).width;
@@ -3538,23 +3440,24 @@ function drawTitle() {
     drawText(ch, x + cw / 2, 108 + bob, size, i % 2 ? '#ffd65a' : '#ffb347');
     x += cw;
   }
-  const sub = 'An endless climb for a hungry kitten';
+  const sub = 'An endless climb for a curious kitten';
   drawText(sub, W / 2, 108 + size * 0.8, fitSize(sub, 18, W - 30), '#ffd1e8');
 
   // what the food does
-  const legend = [['fish', 'big bounce', EFFECT_COLORS.bounce], ['catnip', 'shield', EFFECT_COLORS.shield], ['pizza', 'rush', EFFECT_COLORS.rush], ['laser', 'chase', EFFECT_COLORS.laser]];
+  const legend = [['fish', 'big bounce', EFFECT_COLORS.bounce], ['catnip', 'zoomies', EFFECT_COLORS.rush], ['laser', 'chase', EFFECT_COLORS.laser], ['mouse', 'catch!', '#ffe066']];
   const gap = Math.min(96, (W - 16) / 4);
   legend.forEach(([k, label, c], i) => {
     const lx = W / 2 + (i - 1.5) * gap, ly = 212;
     ctx.fillStyle = c; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(lx, ly, 22, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-    drawFood(k, lx, ly + Math.sin(game.time * 3 + i) * 3, Math.sin(game.time * 2 + i) * 0.15, 1.15);
+    if (k === 'mouse') drawMouse(lx, ly + 9 + Math.sin(game.time * 3 + i) * 3, Math.sin(game.time) > 0 ? 1 : -1, game.time, false, false);
+    else drawFood(k, lx, ly + Math.sin(game.time * 3 + i) * 3, Math.sin(game.time * 2 + i) * 0.15, 1.15);
     drawText(label, lx, ly + 34, 14, c);
   });
 
   const lines = isTouch
     ? [['HOLD LEFT or RIGHT side to move', '#fff'], [tilt.supported ? '...or switch on TILT (top left)' : 'The kitten bounces all by itself', '#cfc2ea']]
     : [['← →  or  A / D  to move', '#fff'], ['The kitten bounces all by itself', '#cfc2ea']];
-  lines.push(['Eat everything. Dodge pensioners.', '#ffb347'], ['Mind the seagulls!', '#ffb347']);
+  lines.push(['Catch mice. Dodge dogs and tomcats.', '#ffb347'], ['Mind the seagulls!', '#ffb347']);
   const ls = Math.min(17, ...lines.map(([l]) => fitSize(l, 17, W - 30)));
   lines.forEach(([l, c], i) => drawText(l, W / 2, 284 + i * (ls + 9), ls, c));
   if (Math.sin(game.time * 5) > -0.3) drawText(isTouch ? 'Tap to start!' : 'Press SPACE or tap to start!', W / 2, 410, fitSize('Press SPACE or tap to start!', 24, W - 30), '#ffe066');
@@ -3601,7 +3504,7 @@ function drawGameOver() {
     drawText('NEW!', 0, 1, 12, '#fff', 'center', false);
     ctx.restore();
   }
-  const stats = `Climbed ${fmt(game.heightM)}m  ·  Ate ${game.foodEaten} thing${game.foodEaten === 1 ? '' : 's'}`;
+  const stats = `Climbed ${fmt(game.heightM)}m  ·  Caught ${game.miceCaught} mouse${game.miceCaught === 1 ? '' : 's'}`.replace('mouses', 'mice');
   drawText(stats, 0, 24, fitSize(stats, 15, pw - 30), '#8a6aa0', 'center', false);
 
   // rank
@@ -3609,7 +3512,7 @@ function drawGameOver() {
   drawText('Rank', 0, 54, 15, '#8a6aa0', 'center', false);
   drawText(rank, 0, 82, fitSize(rank, 28, pw - 30), '#ff8fc8');
   const next = RANKS[ri + 1];
-  const nextStr = next ? `Next: ${next[1]} at ${fmt(next[0])}m` : 'Peak pastry achieved!';
+  const nextStr = next ? `Next: ${next[1]} at ${fmt(next[0])}m` : 'Top cat achieved!';
   drawText(nextStr, 0, 110, fitSize(nextStr, 14, pw - 30), '#8a6aa0', 'center', false);
   if (game.maxUniverse > 1) {
     const u = `Reached Universe ${game.maxUniverse}: ${theme(game.maxUniverse).title}`;
@@ -3690,6 +3593,7 @@ function render(alpha) {
   drawBlackHoles(camR);
   drawPlatforms(camR);
   drawFoods(camR);
+  drawMice(camR);
   drawHazards(camR);
   drawGulls(camR);
   if (game.state === 'portal') drawPortal(camR);
@@ -3705,7 +3609,7 @@ function render(alpha) {
   ctx.restore();
 
   if (game.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(1, game.flash * 1.2)})`; ctx.fillRect(0, 0, W, H); }
-  if (player.rushT > 0 && game.state === 'play') { ctx.fillStyle = 'rgba(255,154,60,0.08)'; ctx.fillRect(0, 0, W, H); }
+  if (player.rushT > 0 && game.state === 'play') { ctx.fillStyle = 'rgba(95,208,104,0.08)'; ctx.fillRect(0, 0, W, H); }
   if (player.laserT > 0 && game.state === 'play') { ctx.fillStyle = 'rgba(255,59,74,0.06)'; ctx.fillRect(0, 0, W, H); }
 
   if (game.state === 'title') drawTitle();
@@ -3763,7 +3667,7 @@ function makeIcons() {
     link('icon', small, '32x32');
     link('apple-touch-icon', apple, '180x180');
     const manifest = {
-      name: 'Pie in the Sky', short_name: 'Pie Sky', display: 'fullscreen', orientation: 'portrait',
+      name: 'Sky Scratcher', short_name: 'Sky Scratcher', display: 'fullscreen', orientation: 'portrait',
       start_url: location.href.split('#')[0], scope: location.href.replace(/[^/]*$/, ''),
       background_color: '#1a1430', theme_color: '#1a1430',
       icons: [{ src: big, sizes: '512x512', type: 'image/png' }, { src: apple, sizes: '180x180', type: 'image/png' }],
@@ -3781,7 +3685,7 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 // Handy for debugging / tweaking from the console.
-window.PieInTheSky = { game, player, CONFIG, Sound, startGame };
+window.SkyScratcher = { game, player, CONFIG, Sound, startGame };
 </script>
 </body>
 </html>
