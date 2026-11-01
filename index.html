@@ -1099,14 +1099,24 @@ function listenTilt() {
 function requestTilt() {
   if (!tilt.supported) return;
   if (!tilt.needsPermission) { listenTilt(); return; }
-  DeviceOrientationEvent.requestPermission().then(r => {
+  // iPhones: this must run inside a touchend or click, or Safari refuses
+  // without even asking.
+  let ask;
+  try { ask = DeviceOrientationEvent.requestPermission(); } catch (e) { tiltRefused(false); return; }
+  ask.then(r => {
     if (r === 'granted') { tilt.denied = false; listenTilt(); }
-    else tiltRefused();
-  }).catch(tiltRefused);
+    else tiltRefused(true);
+  }).catch(() => tiltRefused(false));
 }
-function tiltRefused() {
+// answered: the person said no (Safari remembers that until it's closed);
+// otherwise the browser wouldn't even ask, which happens when the game is
+// shown inside another page.
+function tiltRefused(answered) {
   tilt.denied = true; tilt.wanted = false; store.set('pieSky.tilt', '0');
-  popText('Tilt not allowed: drag to steer instead', W / 2, H * 0.62, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 2.6, vy: -8 });
+  const lines = answered
+    ? ['Motion access was turned down.', 'Close Safari fully and reopen to be asked again.']
+    : ["This page can't use tilt.", 'Open the game on its own page to tilt.'];
+  lines.forEach((l, i) => popText(l, W / 2, H * 0.6 + i * 22, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 5, vy: -4 }));
 }
 // Some browsers (and games shown inside another page) never send tilt
 // readings at all. If nothing arrives, say so and fall back to dragging.
@@ -1169,9 +1179,12 @@ window.addEventListener('pointermove', e => {
   const v = pointerToView(e);
   input.pointers.set(e.pointerId, v.x);
 });
+// Ask for tilt when the tap ends. On touch screens that has to happen in
+// touchend (Safari doesn't count pointerup as a tap for this).
+function askTiltIfArmed() { if (tilt.armed) { tilt.armed = false; if (tilt.wanted) requestTilt(); } }
 const pointerUp = e => {
   Sound.unlock();
-  if (tilt.armed) { tilt.armed = false; if (tilt.wanted) requestTilt(); }
+  if (e.pointerType !== 'touch') askTiltIfArmed();
   input.pointers.delete(e.pointerId);
 };
 window.addEventListener('pointerup', pointerUp);
@@ -1199,7 +1212,7 @@ window.addEventListener('keyup', e => input.keys.delete(e.code));
 // Stop the page from scrolling, zooming or showing menus on mobile.
 ['touchstart', 'touchmove', 'gesturestart', 'dblclick', 'contextmenu'].forEach(ev =>
   document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
-document.addEventListener('touchend', () => Sound.unlock(), { passive: true });
+document.addEventListener('touchend', () => { Sound.unlock(); askTiltIfArmed(); }, { passive: true });
 
 function releaseAll() { input.pointers.clear(); input.keys.clear(); }
 window.addEventListener('blur', releaseAll);
