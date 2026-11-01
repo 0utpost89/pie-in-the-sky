@@ -35,7 +35,7 @@ Rolo bounces by himself. Your high score and the furthest universe you reached a
 - **Bag of catnip:** catnip zoomies, a rush straight upward
 - **Laser pointer** (rarer): a red dot zips up the screen and Rolo chases it, weaving side to side and ignoring hazards, for about two seconds
 
-Fish and catnip fill his belly (the meter at the top left): more points per snack, up to ×3.5, but more gravity, so the jumps get lower. The belly goes down over time, one level every 10 seconds with a burp. An empty belly isn't bad: it just means Rolo is at his lightest and jumps highest. The laser pointer is a toy, so it doesn't fill the belly.
+Fish and catnip fill his belly (the meter at the top left: green when he's light, turning yellow, orange and finally red when he's stuffed): more points per snack, up to ×3.5, but more gravity, so the jumps get lower. The belly goes down over time, one level every 10 seconds with a burp. An empty belly isn't bad: it just means Rolo is at his lightest and jumps highest. The laser pointer is a toy, so it doesn't fill the belly.
 
 ## Platforms
 

@@ -1,7 +1,7 @@
 // Sky Scratcher service worker: lets the installed game start offline.
 // Online, it always fetches the latest version first (so updates show up
 // straight away) and keeps a copy; offline, it plays the saved copy.
-const CACHE = 'sky-scratcher-v3';
+const CACHE = 'sky-scratcher-v4';
 const FILES = [
   './',
   './index.html',
