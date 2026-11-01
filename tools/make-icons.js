@@ -43,13 +43,13 @@ const ICONS = [
       ctx.fillStyle = 'rgba(230,210,170,0.6)';
       [[150, 180, 22], [380, 330, 16], [120, 360, 12]].forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); });
       if (size >= 64) [[70, 80], [440, 60], [460, 170], [50, 210], [400, 110]].forEach(([x, y], i) => drawStar(x, y, i % 2 ? 9 : 13, 0.3, '#fff6c8'));
-      // Rolo's big grumpy face, his body tucked away below
+      // Rolo's big grumpy face, straight on and centred, his body tucked away below
       game.state = 'title';
       const p = player, saved = {};
-      const pose = { stretch: 0, hair: 0, blinkT: 1, facing: 1, belly: 2, arms: -1, helmetOn: false, chewT: 0, ouchT: 0, noTail: true };
+      const pose = { stretch: 0, hair: 0, blinkT: 1, facing: 1, belly: 2, arms: -1, helmetOn: false, chewT: 0, ouchT: 0, iconPose: true };
       for (const key in pose) { saved[key] = p[key]; p[key] = pose[key]; }
       const sc = style === 'maskable' ? 9 : 11, headY = style === 'maskable' ? 240 : 262;
-      ctx.translate(256 - 3 * sc, headY + 33 * sc);       // the head sits 33 units above his feet
+      ctx.translate(256 - 1 * sc, headY + 33 * sc);       // his head is centred 1 unit right of, and 33 above, his feet
       ctx.scale(sc, sc);
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       drawCreature(p, 'human');

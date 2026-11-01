@@ -2,7 +2,7 @@
 
 An endless vertical jumper starring **Rolo**, a grumpy, very fluffy tabby Persian. He bounces up from a city back yard, through the clouds, past the edge of space and into black holes that lead to other universes. On the way he catches mice, chases laser dots and dodges dogs, stray tomcats and food-pinching seagulls.
 
-Everything is in one `index.html`: the art is drawn with canvas shapes, the sounds and music are made with the Web Audio API, and there are no external assets or libraries.
+Everything is in one `index.html`: the art is drawn with canvas shapes, the sounds and the swinging honky-tonk piano music are made with the Web Audio API, and there are no external assets or libraries.
 
 ## Play
 

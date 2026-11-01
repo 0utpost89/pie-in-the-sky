@@ -397,42 +397,45 @@ const Sound = {
 };
 
 /* ---------------------------------------------------------------------
-   4b. MUSIC — an original, jaunty music-hall oompah tune, synthesised live
+   4b. MUSIC — an original, swinging honky-tonk piano tune in the spirit of
+   early-60s finger-snapping easy listening, synthesised live
    --------------------------------------------------------------------- */
-// Written in eighth-note steps (8 per bar). Each bar is a chord name plus
-// melody notes as [step, length in steps, MIDI note]; '' = bicycle horn.
+// Written in swung eighth-note steps (8 per bar). Each bar is a chord name
+// plus melody notes as [step, length in steps, MIDI note]; '' = a little meow.
+// The left hand plays stride: low bass on beats 1 & 3, a chord on 2 & 4.
 const CHORDS = {
-  C: [48, 52, 55], F: [53, 57, 60], G: [55, 59, 62], G7: [55, 59, 65],
-  A7: [57, 61, 64], D7: [50, 54, 60], Am: [57, 60, 64], Dm: [50, 53, 57],
+  C6: [48, 52, 55, 57], A7: [45, 49, 52, 55], Dm7: [50, 53, 57, 60], G7: [43, 47, 50, 53],
+  F6: [41, 45, 48, 50], D7: [50, 54, 57, 60],
 };
 const SONG = (() => {
   const A = [
-    ['C',  [[0, 1, 72], [1, 1, 74], [2, 2, 76], [4, 1, 72], [5, 1, 67], [6, 2, 67]]],
-    ['C',  [[0, 1, 69], [1, 1, 71], [2, 2, 72], [4, 2, 76], [6, 2, 79]]],
-    ['F',  [[0, 2, 77], [2, 1, 76], [3, 1, 74], [4, 2, 72], [6, 2, 69]]],
-    ['C',  [[0, 3, 72], [3, 1, 76], [4, 2, 79], [6, 1, ''], [7, 1, '']]],
-    ['G',  [[0, 1, 74], [1, 1, 76], [2, 2, 74], [4, 1, 71], [5, 1, 67], [6, 2, 71]]],
-    ['G7', [[0, 1, 74], [1, 1, 77], [2, 2, 79], [4, 2, 77], [6, 2, 74]]],
-    ['C',  [[0, 1, 76], [1, 1, 74], [2, 1, 72], [3, 1, 71], [4, 2, 72], [6, 2, 67]]],
-    ['C',  [[0, 4, 72], [6, 1, ''], [7, 1, '']]],
+    ['C6',  [[0, 1, 76], [1, 1, 75], [2, 2, 76], [4, 1, 79], [5, 1, 76], [6, 2, 72]]],
+    ['A7',  [[0, 1, 73], [1, 1, 74], [2, 2, 76], [4, 2, 79], [6, 2, 81]]],
+    ['Dm7', [[0, 3, 77], [3, 1, 76], [4, 1, 74], [5, 1, 72], [6, 2, 69]]],
+    ['G7',  [[0, 2, 71], [2, 2, 74], [4, 2, 77], [6, 2, '']]],
+    ['C6',  [[0, 1, 76], [1, 1, 75], [2, 2, 76], [4, 1, 79], [5, 1, 76], [6, 2, 72]]],
+    ['Dm7', [[0, 1, 74], [1, 1, 76], [2, 2, 77], [4, 1, 81], [5, 1, 79], [6, 2, 77]]],
+    ['G7',  [[0, 1, 74], [1, 1, 77], [2, 2, 79], [4, 1, 77], [5, 1, 74], [6, 2, 71]]],
+    ['C6',  [[0, 2, 72], [2, 2, 67], [4, 2, 72], [6, 2, '']]],
   ];
   const B = [
-    ['F',  [[0, 2, 81], [2, 1, 79], [3, 1, 77], [4, 2, 76], [6, 2, 77]]],
-    ['F',  [[0, 2, 74], [2, 2, 77], [4, 4, 81]]],
-    ['C',  [[0, 2, 79], [2, 1, 77], [3, 1, 76], [4, 2, 74], [6, 2, 76]]],
-    ['A7', [[0, 2, 73], [2, 2, 76], [4, 4, 79]]],
-    ['D7', [[0, 1, 78], [1, 1, 79], [2, 2, 81], [4, 2, 78], [6, 2, 74]]],
-    ['G7', [[0, 1, 77], [1, 1, 76], [2, 2, 74], [4, 2, 71], [6, 2, 67]]],
-    ['C',  [[0, 2, 72], [2, 2, 76], [4, 2, 74], [6, 2, 71]]],
-    ['C',  [[0, 4, 72], [4, 1, 67], [5, 1, 72], [6, 1, ''], [7, 1, '']]],
+    ['F6',  [[0, 1, 81], [1, 1, 80], [2, 2, 81], [4, 2, 77], [6, 2, 72]]],
+    ['F6',  [[0, 1, 74], [1, 1, 76], [2, 2, 77], [4, 2, 81], [6, 2, 84]]],
+    ['C6',  [[0, 3, 84], [3, 1, 83], [4, 1, 81], [5, 1, 79], [6, 2, 76]]],
+    ['C6',  [[0, 2, 79], [2, 2, 76], [4, 2, 72], [6, 2, '']]],
+    ['D7',  [[0, 1, 78], [1, 1, 79], [2, 2, 81], [4, 2, 78], [6, 2, 74]]],
+    ['G7',  [[0, 1, 77], [1, 1, 79], [2, 2, 77], [4, 2, 74], [6, 2, 71]]],
+    ['C6',  [[0, 1, 76], [1, 1, 75], [2, 1, 76], [3, 1, 79], [4, 2, 84], [6, 2, 79]]],
+    ['G7',  [[0, 2, 74], [2, 2, 71], [4, 2, 67], [6, 2, '']]],
   ];
-  return [].concat(A, B, A, B);
+  return [].concat(A, A, B, A);
 })();
-// Each universe gets its own band: a cornet, a cosy organ, a jaunty mandolin.
+const SWING = 0.64;                 // share of each beat the first eighth gets
+// Each universe gets its own lead: honky-tonk piano, a twinkly celesta, a jazzy organ.
 const BANDS = {
-  human: { transpose: 0, lead: 'cornet', bpm: 132 },
-  yarn:  { transpose: -5, lead: 'organ', bpm: 118 },
-  dog:   { transpose: 2, lead: 'mandolin', bpm: 140 },
+  human: { transpose: 0, lead: 'piano', bpm: 124 },
+  yarn:  { transpose: -3, lead: 'celesta', bpm: 108 },
+  dog:   { transpose: 2, lead: 'organ', bpm: 134 },
 };
 
 const Music = {
@@ -469,31 +472,37 @@ const Music = {
     const c = Sound.ctx;
     if (document.hidden) { this.nextTime = c.currentTime + 0.05; return; }
     while (this.nextTime < c.currentTime + 0.15) {
-      const e = 60 / this.bpm() / 2;
+      const beat = 60 / this.bpm(), e = beat / 2;
       this.playStep(this.step, this.nextTime, e);
-      this.nextTime += e;
+      this.nextTime += beat * (this.step % 2 === 0 ? SWING : 1 - SWING);     // swing it
       this.step = (this.step + 1) % (SONG.length * 8);
     }
   },
   playStep(step, t, e) {
     const [chord, notes] = SONG[Math.floor(step / 8)], k = step % 8, band = this.band(), tr = band.transpose;
     const ch = CHORDS[chord].map(n => n + tr);
-    if (k % 4 === 0) this.kick(t);
-    if (k % 4 === 2) this.snare(t);
-    if (k % 2 === 0) this.hat(t);
-    if (k === 0) this.tuba(t, ch[0] - 12, e * 1.6);                         // oom...
-    if (k === 4) this.tuba(t, ch[2] - 24 + (ch[2] - 24 < ch[0] - 12 ? 12 : 0), e * 1.6);
-    if (k === 2 || k === 6) this.stab(t, ch.map(n => n + 12), e * 0.7);       // ...pah
+    // brushes and finger snaps
+    if (k === 0) this.kick(t);
+    if (k === 2 || k === 6) { this.snare(t); this.snap(t); }
+    this.hat(t, k % 2 ? 0.025 : 0.045);
+    // stride left hand: bass on 1 & 3 (root, then fifth), chord on 2 & 4
+    if (k === 0) this.piano(t, ch[0] - 12, e * 1.8, 0.16);
+    if (k === 4) this.piano(t, ch[2] - 12 - (ch[2] - 12 > ch[0] - 5 ? 12 : 0), e * 1.8, 0.14);
+    if (k === 2 || k === 6) for (const n of ch.slice(1)) this.piano(t, n + 12, e * 0.9, 0.05);
     for (const [st, len, n] of notes) {
       if (st !== k) continue;
-      if (n === '') { this.horn(t); continue; }
+      if (n === '') { this.meow(t); continue; }
       this.lead(band.lead, t, n + tr, len * e * 0.92);
     }
   },
   lead(kind, t, midi, d) {
-    if (kind === 'mandolin') {                         // tremolo picking
-      const reps = Math.max(1, Math.round(d / 0.07));
-      for (let i = 0; i < reps; i++) this.pluck(t + i * (d / reps), midi, d / reps + 0.05, i ? 0.1 : 0.16);
+    if (kind === 'piano') {                            // right hand, with a quiet octave below
+      this.piano(t, midi, d, 0.17);
+      this.piano(t, midi - 12, d, 0.06);
+      return;
+    }
+    if (kind === 'celesta') {                          // a music box
+      this.bell(t, midi, d);
       return;
     }
     const c = Sound.ctx, f = 440 * Math.pow(2, (midi - 69) / 12);
@@ -527,15 +536,50 @@ const Music = {
     o1.connect(filt); o2.connect(filt); filt.connect(g); g.connect(this.gain);
     o1.start(t); o2.start(t); o1.stop(t + d + 0.1); o2.stop(t + d + 0.1);
   },
-  pluck(t, midi, d, vol) {
+  // A honky-tonk piano: two slightly out-of-tune strings and a percussive decay.
+  piano(t, midi, d, vol) {
     const c = Sound.ctx, f = 440 * Math.pow(2, (midi - 69) / 12);
-    const o = c.createOscillator(), filt = c.createBiquadFilter(), g = c.createGain();
-    o.type = 'square'; o.frequency.value = f;
-    filt.type = 'lowpass'; filt.frequency.setValueAtTime(f * 6, t); filt.frequency.exponentialRampToValueAtTime(f * 1.5, t + d);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-    o.connect(filt); filt.connect(g); g.connect(this.gain);
-    o.start(t); o.stop(t + d + 0.02);
+    const filt = c.createBiquadFilter(), g = c.createGain();
+    filt.type = 'lowpass';
+    filt.frequency.setValueAtTime(Math.min(f * 8, 7000), t);
+    filt.frequency.exponentialRampToValueAtTime(Math.min(f * 2.5, 4000), t + 0.3);
+    const ring = Math.min(1.4, d + 0.35);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(vol * 0.35, t + 0.18);
+    g.gain.setTargetAtTime(0.0001, t + d, 0.06);
+    filt.connect(g); g.connect(this.gain);
+    for (const [type, mul, amp] of [['triangle', 1, 1], ['triangle', 1.006, 0.8], ['sine', 2, 0.35], ['square', 1, 0.08]]) {
+      const o = c.createOscillator(), og = c.createGain();
+      o.type = type; o.frequency.value = f * mul; og.gain.value = amp;
+      o.connect(og); og.connect(filt); o.start(t); o.stop(t + ring + 0.1);
+    }
   },
+  bell(t, midi, d) {
+    const c = Sound.ctx, f = 440 * Math.pow(2, (midi - 69) / 12), g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(1.2, d + 0.5));
+    g.connect(this.gain);
+    for (const [mul, amp] of [[1, 1], [4, 0.25], [2.76, 0.12]]) {
+      const o = c.createOscillator(), og = c.createGain();
+      o.type = 'sine'; o.frequency.value = f * mul; og.gain.value = amp;
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + Math.min(1.2, d + 0.5) + 0.05);
+    }
+  },
+  // A little synthesised meow: a nasal tone that rises and falls.
+  meow(t) {
+    const c = Sound.ctx, o = c.createOscillator(), f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(760, t + 0.12); o.frequency.exponentialRampToValueAtTime(430, t + 0.36);
+    f1.type = 'bandpass'; f1.Q.value = 3; f1.frequency.setValueAtTime(900, t); f1.frequency.linearRampToValueAtTime(1500, t + 0.12); f1.frequency.linearRampToValueAtTime(800, t + 0.36);
+    f2.type = 'lowpass'; f2.frequency.value = 3000;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.04);
+    g.gain.setValueAtTime(0.14, t + 0.24); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+    o.connect(f1); f1.connect(f2); f2.connect(g); g.connect(this.gain);
+    o.start(t); o.stop(t + 0.4);
+  },
+  snap(t) { this.drumNoise(t, 0.035, 'bandpass', 2600, 0.22, 2.5); },
   tuba(t, midi, d) {
     const c = Sound.ctx, f = 440 * Math.pow(2, (midi - 69) / 12);
     const o = c.createOscillator(), o2 = c.createOscillator();
@@ -548,17 +592,6 @@ const Music = {
     o.connect(filt); o2.connect(og); og.connect(filt); filt.connect(g); g.connect(this.gain);
     o.start(t); o2.start(t); o.stop(t + d + 0.02); o2.stop(t + d + 0.02);
   },
-  stab(t, midis, d) {
-    const c = Sound.ctx, filt = c.createBiquadFilter(), g = c.createGain();
-    filt.type = 'lowpass'; filt.frequency.value = 1700;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.006);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-    filt.connect(g); g.connect(this.gain);
-    for (const m of midis) {
-      const o = c.createOscillator(); o.type = 'square'; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
-      o.connect(filt); o.start(t); o.stop(t + d + 0.02);
-    }
-  },
   drumNoise(t, dur, type, freq, vol, q = 1) {
     const c = Sound.ctx, n = c.createBufferSource(); n.buffer = Sound.noiseBuf;
     const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
@@ -569,22 +602,11 @@ const Music = {
   kick(t) {
     const c = Sound.ctx, o = c.createOscillator(), g = c.createGain();
     o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.1);
-    g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
     o.connect(g); g.connect(this.gain); o.start(t); o.stop(t + 0.18);
   },
-  snare(t) { this.drumNoise(t, 0.1, 'bandpass', 1900, 0.26, 0.8); },
-  hat(t) { this.drumNoise(t, 0.03, 'highpass', 7500, 0.05); },
-  horn(t) {                                          // a bicycle horn: parp!
-    const c = Sound.ctx, filt = c.createBiquadFilter(), g = c.createGain();
-    filt.type = 'bandpass'; filt.frequency.value = 900; filt.Q.value = 1.2;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.14, t + 0.01);
-    g.gain.setValueAtTime(0.12, t + 0.07); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
-    filt.connect(g); g.connect(this.gain);
-    for (const f of [311, 330]) {
-      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
-      o.connect(filt); o.start(t); o.stop(t + 0.12);
-    }
-  },
+  snare(t) { this.drumNoise(t, 0.16, 'bandpass', 3200, 0.12, 0.6); },              // a soft brush swish
+  hat(t, vol = 0.04) { this.drumNoise(t, 0.04, 'highpass', 8000, vol); },
 
   // --- jingles (sound effects: they play even with the music switched off) ---
   fanfare() {
@@ -3078,7 +3100,8 @@ function drawCreature(p, tid) {
   const fluff = 1 + clamp(p.hair, -1, 1) * 0.12;                       // fur puffs up on a bounce
   ctx.save(); ctx.scale(sx, sy);                                        // squash & stretch from the feet
 
-  if (!p.noTail) {                                                     // (left off for the app icon)
+  const icon = !!p.iconPose;                                            // straight-on and symmetrical, for the app icon
+  if (!icon) {
     // the great bushy tail, swishing behind
     const wag = Math.sin(t * 2.2) * 0.3 + clamp(p.hair, -1, 1) * 0.35;
     const tailPts = [];
@@ -3106,12 +3129,12 @@ function drawCreature(p, tid) {
   furPath(0, -15, bw, bh, 13, 2.6, 3); ctx.fill(); ctx.stroke();
   ctx.strokeStyle = KIT.dark; ctx.lineWidth = 2;                       // tabby stripes down his back
   ctx.beginPath();
-  for (const a of [0.92, 1.06, 1.2]) {
+  if (!icon) for (const a of [0.92, 1.06, 1.2]) {
     ctx.moveTo(Math.cos(Math.PI * a) * bw * 0.95, -15 + Math.sin(Math.PI * a) * bh * 0.95);
     ctx.lineTo(Math.cos(Math.PI * a) * bw * 0.55, -15 + Math.sin(Math.PI * a) * bh * 0.55);
   }
   ctx.stroke();
-  ctx.fillStyle = KIT.light; furPath(3, -14, bw * 0.55, bh * 0.75, 9, 2.4, 11); ctx.fill();   // creamy chest ruff
+  ctx.fillStyle = KIT.light; furPath(icon ? 0 : 3, -14, bw * 0.55, bh * 0.75, 9, 2.4, 11); ctx.fill();   // creamy chest ruff
 
   // front paws: tucked in when falling, up and out when he's rising
   const paws = [[-7, -8], [8, -8]].map(([x, y], k) => [lerp(x, k ? 13 : -12, u), lerp(y, -23, u)]);
@@ -3137,7 +3160,7 @@ function drawCreature(p, tid) {
   ctx.fillStyle = KIT.fur; ctx.strokeStyle = OUT; ctx.lineWidth = 2.5;
   furPath(hx, hy, 16 * fluff, 13.5 * fluff, 16, 2.8, 5); ctx.fill(); ctx.stroke();
 
-  const fx = hx + 2;                                                    // his face looks where he's heading
+  const fx = hx + (icon ? 0 : 2);                                       // his face looks where he's heading
   // lighter muzzle and cheeks
   ctx.fillStyle = KIT.light;
   ctx.beginPath(); ctx.ellipse(fx, hy + 5, 8.5, 5.5, 0, 0, TAU); ctx.fill();
