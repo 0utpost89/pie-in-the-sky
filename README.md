@@ -12,8 +12,8 @@ Everything is in one `index.html`: the art is drawn with canvas shapes, the soun
 ## Controls
 
 - **Arrow keys** or **A / D:** move left and right
-- **Touch:** hold the left or right side of the screen
-- **Tilt:** switch on **TILT** on the title screen (iPhones will ask for permission)
+- **Touch:** put your thumb anywhere and drag; Rolo steers towards it
+- **Tilt:** switch on **TILT** on the title screen (iPhones will ask for permission). If the browser never sends tilt readings, the game says so and you can drag instead
 - **Space / Enter / tap:** start, or try again
 - **M** or the speaker button: mute everything
 - **N** or the music-note button: music on/off

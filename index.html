@@ -65,6 +65,10 @@ const CONFIG = {
   moveDecel: 2000,         // how fast he slows with no input
   airDrag: 2.4,            // how fast sideways shoves (knocks, black-hole flings) fade, per second
 
+  // Touch: drag anywhere and he steers towards your finger
+  dragEase: 70,            // px: closer than this he slows down
+  dragDeadzone: 5,         // px: close enough, stop
+
   // Tilt control (phones)
   tiltFullAngle: 22,       // degrees of tilt for full speed
   tiltDeadzone: 2.5,
@@ -818,6 +822,7 @@ const game = {
   say: null, sayT: 6,
   lastKnockT: -99, lastGullT: -99,
   hint: 0,                 // seconds of "how to move" hints at the start of a run
+  tiltWait: 0,             // seconds spent waiting for a first tilt reading
 };
 
 const player = {
@@ -853,6 +858,7 @@ function startGame() {
   game.lastKnockT = -99; game.lastGullT = -99;
   game.gullT = rand(6, 10);
   game.hint = 4;
+  game.tiltWait = 0;
   game.cam = -(H - 110); game.prevCam = game.cam;
   Object.assign(player, {
     x: W / 2, y: 0, vx: 0, vy: -jumpVel(), facing: 1,
@@ -1059,9 +1065,9 @@ function speak(text, target, opts = {}) {
 }
 
 /* ---------------------------------------------------------------------
-   8. INPUT — arrow keys / A-D, left & right touch zones, or phone tilt
+   8. INPUT — arrow keys / A-D, drag to steer on touch screens, or phone tilt
    --------------------------------------------------------------------- */
-const input = { keys: new Set(), pointers: new Map() };   // pointer id -> -1 (left) / +1 (right)
+const input = { keys: new Set(), pointers: new Map() };   // pointer id -> finger x (view units)
 const LEFT_KEYS = new Set(['ArrowLeft', 'KeyA']), RIGHT_KEYS = new Set(['ArrowRight', 'KeyD']);
 const START_KEYS = new Set(['Space', 'Enter', 'ArrowUp', 'KeyW']);
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -1100,7 +1106,13 @@ function requestTilt() {
 }
 function tiltRefused() {
   tilt.denied = true; tilt.wanted = false; store.set('pieSky.tilt', '0');
-  popText('Tilt not allowed: use the touch zones', W / 2, H * 0.62, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 2.6, vy: -8 });
+  popText('Tilt not allowed: drag to steer instead', W / 2, H * 0.62, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 2.6, vy: -8 });
+}
+// Some browsers (and games shown inside another page) never send tilt
+// readings at all. If nothing arrives, say so and fall back to dragging.
+function tiltUnavailable() {
+  tilt.wanted = false; store.set('pieSky.tilt', '0');
+  popText("Tilt isn't working here: drag to steer", W / 2, H * 0.62, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 3, vy: -8 });
 }
 function toggleTilt() {
   tilt.wanted = !tilt.wanted;
@@ -1113,7 +1125,13 @@ function moveInput() {
   let k = 0;
   for (const c of input.keys) { if (LEFT_KEYS.has(c)) k -= 1; if (RIGHT_KEYS.has(c)) k += 1; }
   if (k) return clamp(k, -1, 1);
-  if (input.pointers.size) { let s = 0; for (const v of input.pointers.values()) s += v; return clamp(s, -1, 1); }
+  if (input.pointers.size) {
+    // steer towards the (latest) finger, easing off as he gets close
+    let fx = 0; for (const v of input.pointers.values()) fx = v;
+    const d = fx - player.x;
+    if (Math.abs(d) < CONFIG.dragDeadzone) return 0;
+    return clamp(d / CONFIG.dragEase, -1, 1);
+  }
   if (tilt.wanted && tilt.listening) return tilt.value;
   return 0;
 }
@@ -1143,13 +1161,13 @@ window.addEventListener('pointerdown', e => {
   if (inMusicButton(v.x, v.y)) { toggleMusic(); return; }
   if (hitButton(v)) return;
   if (tilt.wanted && !tilt.listening) tilt.armed = true;           // ask for tilt on the way up
-  if (game.state === 'play' || game.state === 'portal') input.pointers.set(e.pointerId, v.x < W / 2 ? -1 : 1);
+  if (game.state === 'play' || game.state === 'portal') input.pointers.set(e.pointerId, v.x);
   else pressStart();
 }, { passive: false });
 window.addEventListener('pointermove', e => {
   if (!input.pointers.has(e.pointerId)) return;
   const v = pointerToView(e);
-  input.pointers.set(e.pointerId, v.x < W / 2 ? -1 : 1);
+  input.pointers.set(e.pointerId, v.x);
 });
 const pointerUp = e => {
   Sound.unlock();
@@ -1268,6 +1286,7 @@ function goToMenu() {
 function updatePlay(dt) {
   const p = player, C = CONFIG;
   if (game.hint > 0) game.hint -= dt;
+  if (tilt.wanted && tilt.listening && !tilt.seen) { game.tiltWait += dt; if (game.tiltWait > 2.5) tiltUnavailable(); }
   const hRel = relHeight(p.y);
   const g = C.gravity * gravityMulAt(hRel) * (1 + p.belly * C.belly.gravityPerLevel);
 
@@ -3457,14 +3476,12 @@ function drawHUD() {
   if (game.hint > 0 && game.state === 'play') {
     const a = Math.min(1, game.hint) * 0.8;
     ctx.globalAlpha = a;
-    if (isTouch && !(tilt.wanted && tilt.listening)) {
-      for (const side of [-1, 1]) {
-        const cx = side < 0 ? 46 : W - 46, cy = H - 90;
-        ctx.fillStyle = 'rgba(43,23,64,0.6)'; ctx.beginPath(); ctx.arc(cx, cy, 28, 0, TAU); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(cx + side * 11, cy); ctx.lineTo(cx - side * 7, cy - 11); ctx.lineTo(cx - side * 7, cy + 11); ctx.closePath(); ctx.fill();
-      }
-      drawText('hold either side to move', W / 2, H - 90, 14, '#fff');
+    if (isTouch && !(tilt.wanted && tilt.seen)) {
+      const fx = W / 2 + Math.sin(game.time * 2.5) * W * 0.22, cy = H - 120;   // a finger sliding side to side
+      ctx.fillStyle = 'rgba(43,23,64,0.6)'; ctx.beginPath(); ctx.arc(fx, cy, 22, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(fx, cy, 8, 0, TAU); ctx.fill();
+      drawText('drag your thumb to steer', W / 2, H - 82, 15, '#fff');
     } else if (isTouch) drawText('tilt to move', W / 2, H - 90, 16, '#fff');
     else drawText('← →  or  A / D  to move', W / 2, H - 90, 16, '#fff');
     ctx.globalAlpha = 1;
@@ -3524,7 +3541,7 @@ function drawTitle() {
   });
 
   const lines = isTouch
-    ? [['HOLD LEFT or RIGHT side to move', '#fff'], [tilt.supported ? '...or switch on TILT (top left)' : 'Rolo bounces all by himself', '#cfc2ea']]
+    ? [['DRAG your thumb to steer', '#fff'], [tilt.supported ? '...or switch on TILT (top left)' : 'Rolo bounces all by himself', '#cfc2ea']]
     : [['← →  or  A / D  to move', '#fff'], ['Rolo bounces all by himself', '#cfc2ea']];
   lines.push(['Catch mice. Dodge dogs and tomcats.', '#ffb347'], ['Mind the seagulls!', '#ffb347']);
   const ls = Math.min(17, ...lines.map(([l]) => fitSize(l, 17, W - 30)));
