@@ -1,6 +1,6 @@
 # Sky Scratcher
 
-An endless vertical jumper. A curious little ginger kitten bounces up from a city back yard, through the clouds, past the edge of space and into black holes that lead to other universes. On the way she catches mice, chases laser dots and dodges dogs, stray tomcats and food-pinching seagulls.
+An endless vertical jumper starring **Rolo**, a grumpy, very fluffy tabby Persian. He bounces up from a city back yard, through the clouds, past the edge of space and into black holes that lead to other universes. On the way he catches mice, chases laser dots and dodges dogs, stray tomcats and food-pinching seagulls.
 
 Everything is in one `index.html`: the art is drawn with canvas shapes, the sounds and music are made with the Web Audio API, and there are no external assets or libraries.
 
@@ -18,19 +18,19 @@ Everything is in one `index.html`: the art is drawn with canvas shapes, the soun
 - **M** or the speaker button: mute everything
 - **N** or the music-note button: music on/off
 
-The kitten bounces by itself. Your high score and the furthest universe you reached are saved in your browser.
+Rolo bounces by himself. Your high score and the furthest universe you reached are saved in your browser.
 
 ## Pickups
 
 - **Fish:** three bigger bounces
 - **Bag of catnip:** catnip zoomies, a rush straight upward
-- **Laser pointer** (rarer): a red dot zips up the screen and the kitten chases it, weaving side to side and ignoring hazards, for about two seconds
+- **Laser pointer** (rarer): a red dot zips up the screen and Rolo chases it, weaving side to side and ignoring hazards, for about two seconds
 
-Fish and catnip fill her belly: more points per snack, but more gravity, so the jumps get lower. The belly goes down over time (one level every 10 seconds, with a burp). The laser pointer is a toy, so it doesn't fill the belly.
+Fish and catnip fill his belly: more points per snack, but more gravity, so the jumps get lower. The belly goes down over time (one level every 10 seconds, with a burp). The laser pointer is a toy, so it doesn't fill the belly.
 
 ## Mice
 
-Mice potter along some platforms. Run into one to catch it for points (worth more with a fuller belly). They squeak and scarper when she gets close, so corner them at the end of a platform.
+Mice potter along some platforms. Run into one to catch it for points (worth more with a fuller belly). They squeak and scarper when he gets close, so corner them at the end of a platform.
 
 ## Platforms
 
@@ -57,7 +57,7 @@ Every zone has the same four kinds, so you can read them at speed:
 4. Deep Space (4,500 to 7,000m)
 5. The Black Hole Belt (7,000m onward)
 
-Drift into the middle of a black hole to go through to **Universe 2 (Yarn World)**, where she wears a bobble hat and the platforms are scarves, balls of wool and knitting needles. The next black hole leads to **Universe 3 (Dog World)**, where she goes undercover in a pair of floppy dog ears among kennels, tennis balls and frisbees. Then it's round again.
+Drift into the middle of a black hole to go through to **Universe 2 (Yarn World)**, where he wears a bobble hat and the platforms are scarves, balls of wool and knitting needles. The next black hole leads to **Universe 3 (Dog World)**, where he goes undercover in a pair of floppy dog ears among kennels, tennis balls and frisbees. Then it's round again.
 
 ## Tweaking
 
