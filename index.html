@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Sky Scratcher">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Sky Scratcher</title>
-<meta name="description" content="Rolo the grumpy tabby Persian bounces endlessly upward, catching mice and dodging dogs.">
+<meta name="description" content="Rolo the grumpy tabby Persian bounces endlessly upward, chasing laser dots and dodging dogs.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -34,8 +34,8 @@
 /* =====================================================================
    SKY SCRATCHER
    Rolo, a grumpy, fluffy tabby Persian, bounces endlessly upward from his
-   back yard to the edge of space and beyond, catching mice, chasing
-   laser dots and dodging dogs. Everything is drawn with canvas shapes and every sound is
+   back yard to the edge of space and beyond, eating fish, chasing laser
+   dots and dodging dogs. Everything is drawn with canvas shapes and every sound is
    synthesised with the Web Audio API. No external assets.
 
    Sections:
@@ -118,11 +118,6 @@ const CONFIG = {
   laserTime: 2.2,          // laser pointer: seconds chasing the red dot...
   laserSpeed: 860,         // ...climbing at this speed
   laserLead: 150,          // ...with the dot this far ahead of him
-
-  // Mice: they scurry along platforms; catch one for points
-  mouseChance: 0.12,       // chance of a mouse on a free platform
-  mousePoints: 75,         // x the belly multiplier, like food
-  mouseFleeSpeed: 70,      // how fast they run when he gets close
 
   // Hazards
   knockDown: 380,          // downward speed after bumping into a dog or a tomcat
@@ -361,7 +356,6 @@ const Sound = {
     this.noise(0.15, 2500, 0.1, 0, 'bandpass', 2);
   },
   bop() { this.tone(520, 0.12, 'square', 0.1, 0, 1040); this.noise(0.08, 3000, 0.2, 0, 'highpass'); },
-  squeak() { this.tone(2200, 0.06, 'square', 0.04, 0, 2800); this.tone(2600, 0.07, 'square', 0.035, 0.07, 3200); },
   rush() { this.noise(0.6, 400, 0.4, 0, 'bandpass', 1.2, 3000); this.tone(200, 0.5, 'sawtooth', 0.06, 0, 800); },
   laser() { this.tone(1800, 0.25, 'sine', 0.08, 0, 2600); this.tone(2400, 0.12, 'square', 0.03, 0.08, 1600); },
   power() { [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.1, 'square', 0.05, i * 0.05)); },
@@ -640,7 +634,7 @@ const RANKS = [
   [1000,  'Cloud Botherer'],
   [1800,  'Sky Scratcher'],
   [2500,  'Space Cat'],
-  [4500,  'Cosmic Mouser'],
+  [4500,  'Cat-stronaut'],
   [7000,  'Black Hole Prowler'],
   [9000,  'Yarn Wrangler'],
   [13000, 'Top Dog (Secretly a Cat)'],
@@ -682,15 +676,13 @@ const GRUMBLES = {
   dogballoon: ['WOOF! Up here!', 'Bark from above!', 'Look, no paws!', 'GRRR!'],
   spacedog:   ['WOOF... in SPACE!', 'Good boy, reporting for duty!', 'Fetch the moon!', 'BARK!'],
 };
-const MOUSE_LINES = ['GOTCHA!', 'POUNCE!', 'CAUGHT ONE!', 'MOUSED!'];
-const SQUEAKS = ['Eek!', 'Squeak!', 'Not the whiskers!'];
 const GULL_LINES = ['MINE!', 'SQUAWK!', 'Mine mine mine!', 'Cheers, mate!', 'Nicked it!'];
 const BOP_LINES = ['BOP!', 'BONK!', 'Oof!', 'SQUARK!'];
 const MUNCH_WORDS = ['NOM!', 'MUNCH!', 'CHOMP!', 'SCOFF!', 'GOBBLE!', 'YUM!'];
 const SLURP_WORDS = ['SLURP!', 'GLUG!', 'AHHH!'];
 
 const SAYINGS = {
-  human: ['Mrow?', 'Purrfect.', 'Ooh, is that a fish?', 'I could murder a kipper.', 'Is that... a red dot?', 'I smell mouse.', 'Is the moon made of tuna?', 'Must. Climb. Curtains.'],
+  human: ['Mrow?', 'Purrfect.', 'Ooh, is that a fish?', 'I could murder a kipper.', 'Is that... a red dot?', 'Is the moon made of tuna?', 'Must. Climb. Curtains.'],
   yarn:  ['So. Much. String.', 'Must... not... unravel.', 'Is that the end of the thread?', 'Comfiest world ever.', 'Nice hat, me.'],
   dog:   ['I am in disguise.', 'Woof? ...Woof.', 'Nobody sniff me.', 'Must blend in.', 'Who\'s a good boy? Not me.'],
 };
@@ -834,9 +826,9 @@ const game = {
   state: 'title',          // 'title' | 'play' | 'portal' | 'dying' | 'over'
   time: 0,
   cam: 0, prevCam: 0,      // world y of the top of the view
-  platforms: [], foods: [], hazards: [], mice: [], gulls: [], holes: [], particles: [], bubbles: [],
+  platforms: [], foods: [], hazards: [], gulls: [], holes: [], particles: [], bubbles: [],
   nextY: 0, lastHoleY: 0, gullT: 4,
-  heightM: 0, foodScore: 0, score: 0, foodEaten: 0, miceCaught: 0,
+  heightM: 0, foodScore: 0, score: 0, foodEaten: 0,
   best: parseInt(store.get('pieSky.best', '0'), 10) || 0,
   bestUniverse: parseInt(store.get('pieSky.bestUni', '1'), 10) || 1,
   newBest: false,
@@ -874,9 +866,9 @@ function newPlatform(o) {
 function startGame() {
   game.state = 'play';
   game.time = 0;
-  game.platforms = []; game.foods = []; game.hazards = []; game.mice = []; game.gulls = []; game.holes = [];
+  game.platforms = []; game.foods = []; game.hazards = []; game.gulls = []; game.holes = [];
   game.particles = []; game.bubbles = [];
-  game.heightM = 0; game.foodScore = 0; game.score = 0; game.foodEaten = 0; game.miceCaught = 0;
+  game.heightM = 0; game.foodScore = 0; game.score = 0; game.foodEaten = 0;
   game.newBest = false;
   game.universe = 1; game.uniStartM = 0; game.maxUniverse = 1;
   game.zoneIdx = 0;
@@ -965,9 +957,6 @@ function genStep() {
   if (wk) {
     game.hazards.push({ kind: wk, plat, off: rand(0.15, 0.85), dir: Math.random() < 0.5 ? -1 : 1,
       speed: wk === 'dog' ? 26 : wk === 'bulldog' ? 9 : 15, t: rand(0, 10), sayT: 0 });
-  } else if ((role === 'standard' || role === 'moving') && Math.random() < CONFIG.mouseChance) {
-    // a mouse, pottering about: catch it!
-    game.mice.push({ plat, off: rand(0.2, 0.8), dir: Math.random() < 0.5 ? -1 : 1, t: rand(0, 10), flee: 0 });
   }
 
   // a decoy (extra) platform now and then, to fill the sky out
@@ -1016,7 +1005,6 @@ function cull() {
   game.platforms = game.platforms.filter(p => p.y < bottom && !(p.broken && p.breakT > 1.2));
   game.foods = game.foods.filter(f => f.y < bottom && !f.eaten);
   game.hazards = game.hazards.filter(hz => (hz.plat ? game.platforms.includes(hz.plat) : hz.y < bottom + 80));
-  game.mice = game.mice.filter(m => !m.caught && game.platforms.includes(m.plat));
   game.holes = game.holes.filter(bh => bh.y < bottom + 200);
   game.bubbles = game.bubbles.filter(b => b.t < b.max);
 }
@@ -1401,7 +1389,6 @@ function updatePlay(dt) {
   }
 
   updateFood(dt);
-  updateMice(dt);
   updateHazards(dt);
   updateGulls(dt);
   for (const bh of game.holes) bh.t += dt;
@@ -1611,38 +1598,6 @@ function foodCrumbColors(kind) {
   return ['#9fc4dc', '#e8f2f8', '#6a90b0'];                     // fish
 }
 
-/* --- mice: they potter along platforms and run when he gets close --- */
-function updateMice(dt) {
-  const p = player, C = CONFIG;
-  for (const m of game.mice) {
-    m.t += dt;
-    const pl = m.plat;
-    if (pl.broken || pl.leaving) { m.caught = true; continue; }       // it scarpers
-    const mx = pl.x + m.off * pl.w, dx = wrapDX(mx, p.x), dy = pl.y - p.y;
-    const near = Math.abs(dx) < 110 && dy > -40 && dy < 110;
-    if (near && m.flee <= 0) { m.flee = 1.2; m.dir = dx > 0 ? -1 : 1; if (Math.random() < 0.5) speak(pick(SQUEAKS), m, { color: '#8a6aa0', max: 1.2 }); }
-    m.flee = Math.max(0, m.flee - dt);
-    const sp = m.flee > 0 ? C.mouseFleeSpeed : 22 * (Math.sin(m.t * 1.3) > -0.3 ? 1 : 0);   // potters, stops to sniff
-    m.off += m.dir * sp * dt / pl.w;
-    if (m.off < 0.08) { m.off = 0.08; m.dir = 1; } else if (m.off > 0.92) { m.off = 0.92; m.dir = -1; }
-    if (p.beam || game.state !== 'play') continue;
-    if (Math.abs(wrapDX(p.x, mx)) < 22 && p.y > pl.y - 26 && p.y - BODY_H < pl.y) catchMouse(m, mx, pl.y);
-  }
-  game.mice = game.mice.filter(m => !m.caught);
-}
-function catchMouse(m, x, y) {
-  const p = player, C = CONFIG;
-  m.caught = true;
-  const pts = Math.round(C.mousePoints * (1 + p.belly * C.belly.bonusPerLevel));
-  game.foodScore += pts;
-  game.miceCaught++;
-  game.scorePulse = 1;
-  p.chewT = 0.5;
-  Sound.squeak(); Sound.power();
-  emitStars(x, y - 10, 6, ['#ffe066', '#fff', '#ff9fb5']);
-  popText(pick(MOUSE_LINES), x, y - 30, { size: 18, color: '#ffe066', sub: `+${pts}`, max: 1.1 });
-}
-
 // Dogs, tomcats & co.: where they are, and their hitbox [x, y, w, h].
 function hazardPos(hz) {
   if (hz.plat) return { x: hz.plat.x + hz.off * hz.plat.w, y: hz.plat.y };
@@ -1833,7 +1788,7 @@ function switchUniverse() {
   game.universe++;
   game.maxUniverse = Math.max(game.maxUniverse, game.universe);
   game.uniStartM = toMetres(p.y);
-  game.platforms = []; game.foods = []; game.hazards = []; game.mice = []; game.gulls = []; game.holes = []; game.bubbles = [];
+  game.platforms = []; game.foods = []; game.hazards = []; game.gulls = []; game.holes = []; game.bubbles = [];
   game.zoneIdx = 0;
   p.helmetOn = false; p.helmet = 0; p.visorT = 0;
   p.vx = 0; p.ex = 0; p.beam = null;
@@ -2898,45 +2853,6 @@ function drawSpaceDog(x, y, dir, t) {
   ctx.restore();
 }
 
-/* --- mice --- */
-function drawMice(cam) {
-  const space = !!(theme().zones[game.zoneIdx] && theme().zones[game.zoneIdx].space);
-  for (const m of game.mice) {
-    const pl = m.plat, sy = pl.y - cam;
-    if (sy < -40 || sy > H + 40) continue;
-    drawMouse(pl.x + m.off * pl.w, sy, m.dir, m.t, m.flee > 0, space);
-  }
-}
-function drawMouse(x, y, dir, t, fleeing, helmet) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(dir * 1.3, 1.3);
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  const scurry = fleeing ? Math.sin(t * 40) : Math.sin(t * 12) * 0.4;
-  // tail
-  ctx.strokeStyle = '#ff9fb5'; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(-7, -3); ctx.bezierCurveTo(-13, -2, -12, -10 + scurry * 2, -18, -8 + scurry * 3); ctx.stroke();
-  // feet
-  ctx.fillStyle = '#ff9fb5';
-  for (const fx of [-3, 4]) { ctx.beginPath(); ctx.ellipse(fx + scurry * 1.5 * (fx > 0 ? 1 : -1), -0.8, 2, 1.1, 0, 0, TAU); ctx.fill(); }
-  // body
-  ctx.fillStyle = '#b8b0c4'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(-8, -1.5); ctx.quadraticCurveTo(-9, -11, 1, -10); ctx.quadraticCurveTo(7, -9, 10, -3); ctx.lineTo(9, -1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ddd6e6'; ctx.beginPath(); ctx.ellipse(1, -3.5, 5, 2, 0, 0, TAU); ctx.fill();
-  // big round ear
-  ctx.fillStyle = '#b8b0c4'; ctx.beginPath(); ctx.arc(2.5, -10, 3.6, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ffc2d1'; ctx.beginPath(); ctx.arc(2.6, -10, 2, 0, TAU); ctx.fill();
-  // eye, nose, whiskers
-  ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(6, -6.2, 1.1, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#ff7a9a'; ctx.beginPath(); ctx.arc(10.3, -3.2, 1.3, 0, TAU); ctx.fill();
-  ctx.strokeStyle = 'rgba(43,23,64,0.5)'; ctx.lineWidth = 0.6;
-  ctx.beginPath(); ctx.moveTo(9, -3.5); ctx.lineTo(13, -5); ctx.moveTo(9, -3); ctx.lineTo(13, -2); ctx.stroke();
-  if (helmet) {
-    ctx.fillStyle = 'rgba(200,235,255,0.25)'; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(3, -6, 9, 0, TAU); ctx.fill(); ctx.stroke();
-  }
-  ctx.restore();
-  if (fleeing) { ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', x, y - 26); }
-}
-
 /* --- seagulls --- */
 function drawGulls(cam) {
   for (const gl of game.gulls) {
@@ -3394,10 +3310,6 @@ function wrapLines(str, size, maxW) {
 function bubbleAnchor(b, cam) {
   const tg = b.target;
   if (tg === 'player') return { x: player.x, y: player.y - cam - BODY_H - 12 };
-  if (tg.off !== undefined && !tg.kind) {                        // a mouse
-    if (!game.mice.includes(tg)) return null;
-    return { x: tg.plat.x + tg.off * tg.plat.w, y: tg.plat.y - cam - 22 };
-  }
   if (tg.plat !== undefined || tg.kind) {                        // a hazard
     if (!game.hazards.includes(tg)) return null;
     const [bx, by, bw] = hazardBox(tg);
@@ -3588,20 +3500,19 @@ function drawTitle() {
   drawText(sub, W / 2, 108 + size * 0.8, fitSize(sub, 18, W - 30), '#ffd1e8');
 
   // what the food does
-  const legend = [['fish', 'big bounce', EFFECT_COLORS.bounce], ['catnip', 'zoomies', EFFECT_COLORS.rush], ['laser', 'chase', EFFECT_COLORS.laser], ['mouse', 'catch!', '#ffe066']];
-  const gap = Math.min(96, (W - 16) / 4);
+  const legend = [['fish', 'big bounce', EFFECT_COLORS.bounce], ['catnip', 'zoomies', EFFECT_COLORS.rush], ['laser', 'chase', EFFECT_COLORS.laser]];
+  const gap = Math.min(110, (W - 20) / 3);
   legend.forEach(([k, label, c], i) => {
-    const lx = W / 2 + (i - 1.5) * gap, ly = 212;
+    const lx = W / 2 + (i - 1) * gap, ly = 212;
     ctx.fillStyle = c; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(lx, ly, 22, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-    if (k === 'mouse') drawMouse(lx, ly + 9 + Math.sin(game.time * 3 + i) * 3, Math.sin(game.time) > 0 ? 1 : -1, game.time, false, false);
-    else drawFood(k, lx, ly + Math.sin(game.time * 3 + i) * 3, Math.sin(game.time * 2 + i) * 0.15, 1.15);
+    drawFood(k, lx, ly + Math.sin(game.time * 3 + i) * 3, Math.sin(game.time * 2 + i) * 0.15, 1.15);
     drawText(label, lx, ly + 34, 14, c);
   });
 
   const lines = isTouch
     ? [['DRAG your thumb to steer', '#fff'], [tilt.supported ? '...or switch on TILT (top left)' : 'Rolo bounces all by himself', '#cfc2ea']]
     : [['← →  or  A / D  to move', '#fff'], ['Rolo bounces all by himself', '#cfc2ea']];
-  lines.push(['Catch mice. Dodge dogs and tomcats.', '#ffb347'], ['Mind the seagulls!', '#ffb347']);
+  lines.push(['Eat up. Dodge dogs and tomcats.', '#ffb347'], ['Mind the seagulls!', '#ffb347']);
   const ls = Math.min(17, ...lines.map(([l]) => fitSize(l, 17, W - 30)));
   lines.forEach(([l, c], i) => drawText(l, W / 2, 284 + i * (ls + 9), ls, c));
   if (Math.sin(game.time * 5) > -0.3) drawText(isTouch ? 'Tap to start!' : 'Press SPACE or tap to start!', W / 2, 410, fitSize('Press SPACE or tap to start!', 24, W - 30), '#ffe066');
@@ -3661,7 +3572,7 @@ function drawGameOver() {
     drawText('NEW!', 0, 1, 12, '#fff', 'center', false);
     ctx.restore();
   }
-  const stats = `Climbed ${fmt(game.heightM)}m  ·  Caught ${game.miceCaught} mouse${game.miceCaught === 1 ? '' : 's'}`.replace('mouses', 'mice');
+  const stats = `Climbed ${fmt(game.heightM)}m  ·  Ate ${game.foodEaten} snack${game.foodEaten === 1 ? '' : 's'}`;
   drawText(stats, 0, 24, fitSize(stats, 15, pw - 30), '#8a6aa0', 'center', false);
 
   // rank
@@ -3750,7 +3661,6 @@ function render(alpha) {
   drawBlackHoles(camR);
   drawPlatforms(camR);
   drawFoods(camR);
-  drawMice(camR);
   drawHazards(camR);
   drawGulls(camR);
   if (game.state === 'portal') drawPortal(camR);
