@@ -1092,9 +1092,17 @@ function onOrient(e) {
   tilt.value = m < C.tiltDeadzone ? 0 : Math.sign(a) * clamp((m - C.tiltDeadzone) / (C.tiltFullAngle - C.tiltDeadzone), 0, 1);
 }
 function listenTilt() {
-  if (tilt.listening) return;
-  window.addEventListener('deviceorientation', onOrient);
-  tilt.listening = true;
+  if (!tilt.listening) {
+    window.addEventListener('deviceorientation', onOrient);
+    tilt.listening = true;
+  }
+  // a working sensor sends readings straight away; if none come, say so
+  setTimeout(() => { if (tilt.wanted && !tilt.seen) tiltUnavailable(); }, 2500);
+}
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isBrave = !!(navigator.brave && typeof navigator.brave.isBrave === 'function');
+function tiltMessage(lines) {
+  lines.forEach((l, i) => popText(l, W / 2, H * 0.6 + i * 22, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 5, vy: -4 }));
 }
 function requestTilt() {
   if (!tilt.supported) return;
@@ -1102,27 +1110,30 @@ function requestTilt() {
   // iPhones: this must run inside a touchend or click, or Safari refuses
   // without even asking.
   let ask;
-  try { ask = DeviceOrientationEvent.requestPermission(); } catch (e) { tiltRefused(false); return; }
+  try { ask = DeviceOrientationEvent.requestPermission(); } catch (e) { listenTilt(); return; }
   ask.then(r => {
     if (r === 'granted') { tilt.denied = false; listenTilt(); }
-    else tiltRefused(true);
-  }).catch(() => tiltRefused(false));
+    else if (isIOS) tiltRefused(true);
+    else listenTilt();                     // other browsers say 'denied' without asking: see if readings come anyway
+  }).catch(() => listenTilt());            // couldn't even ask: listen anyway, and see if readings come
 }
 // answered: the person said no (Safari remembers that until it's closed);
 // otherwise the browser wouldn't even ask, which happens when the game is
 // shown inside another page.
 function tiltRefused(answered) {
   tilt.denied = true; tilt.wanted = false; store.set('pieSky.tilt', '0');
-  const lines = answered
+  tiltMessage(answered
     ? ['Motion access was turned down.', 'Close Safari fully and reopen to be asked again.']
-    : ["This page can't use tilt.", 'Open the game on its own page to tilt.'];
-  lines.forEach((l, i) => popText(l, W / 2, H * 0.6 + i * 22, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 5, vy: -4 }));
+    : ["This page can't use tilt.", 'Open the game on its own page to tilt.']);
 }
 // Some browsers (and games shown inside another page) never send tilt
 // readings at all. If nothing arrives, say so and fall back to dragging.
 function tiltUnavailable() {
+  if (!tilt.wanted) return;
   tilt.wanted = false; store.set('pieSky.tilt', '0');
-  popText("Tilt isn't working here: drag to steer", W / 2, H * 0.62, { screen: true, size: 15, color: '#ff8fab', rot: 0, max: 3, vy: -8 });
+  if (isBrave) tiltMessage(['Brave blocks tilt for privacy.', 'Use Chrome to tilt, or drag to steer.']);
+  else if (window.self !== window.top) tiltMessage(["This page can't use tilt.", 'Open the game on its own page to tilt.']);
+  else tiltMessage(["No tilt readings from this browser.", 'Drag your thumb to steer instead.']);
 }
 function toggleTilt() {
   tilt.wanted = !tilt.wanted;
@@ -3567,6 +3578,11 @@ function drawTitle() {
   if (isTouch && tilt.supported) {
     const on = tilt.wanted;
     uiButton(12, 8, 118, 32, on ? 'TILT: ON' : 'TILT: OFF', toggleTilt, on ? '#9be564' : '#8a6aa0', 15);
+    if (on && tilt.seen) {                       // a little live meter, to show it's working
+      ctx.fillStyle = 'rgba(43,23,64,0.75)'; roundRect(ctx, 16, 46, 110, 10, 5); ctx.fill();
+      ctx.fillStyle = '#9be564'; ctx.beginPath(); ctx.arc(71 + tilt.value * 50, 51, 6, 0, TAU); ctx.fill();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.5; ctx.stroke();
+    } else if (on) drawText('waiting for tilt...', 71, 54, 11, '#fff');
   }
 }
 
