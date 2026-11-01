@@ -9,6 +9,11 @@
 <meta name="apple-mobile-web-app-title" content="Sky Scratcher">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Sky Scratcher</title>
+<meta name="description" content="Rolo the grumpy tabby Persian bounces endlessly upward, catching mice and dodging dogs.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
@@ -1192,7 +1197,10 @@ window.addEventListener('pointermove', e => {
 });
 // Ask for tilt when the tap ends. On touch screens that has to happen in
 // touchend (Safari doesn't count pointerup as a tap for this).
-function askTiltIfArmed() { if (tilt.armed) { tilt.armed = false; if (tilt.wanted) requestTilt(); } }
+function askTiltIfArmed() {
+  if (tilt.armed) { tilt.armed = false; if (tilt.wanted) requestTilt(); }
+  if (install.armed) { install.armed = false; installApp(); }
+}
 const pointerUp = e => {
   Sound.unlock();
   if (e.pointerType !== 'touch') askTiltIfArmed();
@@ -3070,20 +3078,23 @@ function drawCreature(p, tid) {
   const fluff = 1 + clamp(p.hair, -1, 1) * 0.12;                       // fur puffs up on a bounce
   ctx.save(); ctx.scale(sx, sy);                                        // squash & stretch from the feet
 
-  // the great bushy tail, swishing behind
-  const wag = Math.sin(t * 2.2) * 0.3 + clamp(p.hair, -1, 1) * 0.35;
-  const tailPts = [];
-  for (let k = 0; k <= 8; k++) {
-    const f = k / 8, x = lerp(-10, -20 + wag * 10, f) - Math.sin(f * Math.PI) * 5, y = lerp(-10, -32 + Math.abs(wag) * 3, f);
-    tailPts.push([x, y, lerp(5, 4, f) * fluff]);
+  if (!p.noTail) {                                                     // (left off for the app icon)
+    // the great bushy tail, swishing behind
+    const wag = Math.sin(t * 2.2) * 0.3 + clamp(p.hair, -1, 1) * 0.35;
+    const tailPts = [];
+    for (let k = 0; k <= 8; k++) {
+      const f = k / 8, x = lerp(-10, -20 + wag * 10, f) - Math.sin(f * Math.PI) * 5, y = lerp(-10, -32 + Math.abs(wag) * 3, f);
+      tailPts.push([x, y, lerp(5, 4, f) * fluff]);
+    }
+    ctx.fillStyle = OUT; for (const [x, y, r] of tailPts) { ctx.beginPath(); ctx.arc(x, y, r + 2, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = KIT.fur; for (const [x, y, r] of tailPts) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = KIT.dark; ctx.lineWidth = 1.8;
+    ctx.beginPath(); for (const k of [2, 4, 6]) { const [x, y, r] = tailPts[k]; ctx.moveTo(x - r * 0.8, y + 1); ctx.quadraticCurveTo(x, y - 1.5, x + r * 0.8, y + 1); } ctx.stroke();
+    ctx.strokeStyle = KIT.light; ctx.lineWidth = 1;                       // wispy tip
+    const [tx, ty] = tailPts[8];
+    ctx.beginPath(); for (const d of [-3, 0, 3]) { ctx.moveTo(tx + d, ty - 3); ctx.lineTo(tx + d * 1.4, ty - 8); } ctx.stroke();
+
   }
-  ctx.fillStyle = OUT; for (const [x, y, r] of tailPts) { ctx.beginPath(); ctx.arc(x, y, r + 2, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = KIT.fur; for (const [x, y, r] of tailPts) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
-  ctx.strokeStyle = KIT.dark; ctx.lineWidth = 1.8;
-  ctx.beginPath(); for (const k of [2, 4, 6]) { const [x, y, r] = tailPts[k]; ctx.moveTo(x - r * 0.8, y + 1); ctx.quadraticCurveTo(x, y - 1.5, x + r * 0.8, y + 1); } ctx.stroke();
-  ctx.strokeStyle = KIT.light; ctx.lineWidth = 1;                       // wispy tip
-  const [tx, ty] = tailPts[8];
-  ctx.beginPath(); for (const d of [-3, 0, 3]) { ctx.moveTo(tx + d, ty - 3); ctx.lineTo(tx + d * 1.4, ty - 8); } ctx.stroke();
 
   // back feet: big fluffy slippers
   ctx.fillStyle = KIT.cream; ctx.strokeStyle = OUT; ctx.lineWidth = 2;
@@ -3575,6 +3586,14 @@ function drawTitle() {
     const b = `Best: ${fmt(game.best)}${game.bestUniverse > 1 ? `  ·  reached Universe ${game.bestUniverse}` : ''}`;
     drawText(b, W / 2, 442, fitSize(b, 15, W - 30), '#fff6e8');
   }
+  // install as an app
+  if (!install.standalone && window.self === window.top) {
+    if (install.prompt) uiButton(W / 2 - 80, H - 58, 160, 36, 'INSTALL APP', () => { install.armed = true; }, '#5fd068', 17);
+    else if (isIOS) {
+      const tip = 'To install: tap Share, then "Add to Home Screen"';
+      drawText(tip, W / 2, H - 40, fitSize(tip, 14, W - 30), '#fff6e8');
+    }
+  }
   if (isTouch && tilt.supported) {
     const on = tilt.wanted;
     uiButton(12, 8, 118, 32, on ? 'TILT: ON' : 'TILT: OFF', toggleTilt, on ? '#9be564' : '#8a6aa0', 15);
@@ -3755,47 +3774,31 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-// Home-screen icon & web-app manifest, drawn in code so the game stays one file.
-function makeIcons() {
-  try {
-    const draw = size => {
-      const c = document.createElement('canvas');
-      c.width = c.height = size;
-      const keep = ctx, keepState = game.state;
-      ctx = c.getContext('2d');
-      const g = ctx.createLinearGradient(0, 0, 0, size);
-      g.addColorStop(0, '#5b4a9e'); g.addColorStop(1, '#ff9e7a');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
-      ctx.translate(size / 2, size * 0.5); ctx.scale(size / 60, size / 60);
-      game.state = 'title';
-      const p = player, k = { stretch: p.stretch, hair: p.hair, blinkT: p.blinkT, facing: p.facing, belly: p.belly, arms: p.arms, helmetOn: p.helmetOn, chewT: p.chewT };
-      Object.assign(p, { stretch: 0, hair: 0, blinkT: 1, facing: 1, belly: 0, arms: 0.6, helmetOn: false, chewT: 0 });
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.translate(0, 22); drawCreature(p, 'human');
-      Object.assign(p, k);
-      game.state = keepState;
-      ctx = keep;
-      return c.toDataURL('image/png');
-    };
-    const big = draw(512), apple = draw(180), small = draw(32);
-    const link = (rel, href, sizes) => { const l = document.createElement('link'); l.rel = rel; l.href = href; if (sizes) l.sizes = sizes; document.head.appendChild(l); };
-    link('icon', small, '32x32');
-    link('apple-touch-icon', apple, '180x180');
-    const manifest = {
-      name: 'Sky Scratcher', short_name: 'Sky Scratcher', display: 'fullscreen', orientation: 'portrait',
-      start_url: location.href.split('#')[0], scope: location.href.replace(/[^/]*$/, ''),
-      background_color: '#1a1430', theme_color: '#1a1430',
-      icons: [{ src: big, sizes: '512x512', type: 'image/png' }, { src: apple, sizes: '180x180', type: 'image/png' }],
-    };
-    if (location.protocol.startsWith('http')) link('manifest', 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest)));
-  } catch (e) { /* icons are a nicety */ }
+// Installing as an app. The manifest and icons live next to index.html;
+// the service worker lets the installed game start offline. (Neither works
+// when the game is shown inside another page, or opened as a local file.)
+const install = {
+  prompt: null,            // Chrome & co. hand us this when the game can be installed
+  armed: false,
+  standalone: (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone === true,
+};
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); install.prompt = e; });
+window.addEventListener('appinstalled', () => { install.prompt = null; install.standalone = true; });
+function installApp() {
+  const ev = install.prompt;
+  if (!ev) return;
+  install.prompt = null;
+  ev.prompt();
+  if (ev.userChoice) ev.userChoice.then(r => { if (r.outcome !== 'accepted') install.prompt = ev; }).catch(() => {});
+}
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && window.self === window.top) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
 
 window.addEventListener('resize', resize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 resize();
 setupTitle();
-makeIcons();
 canvas.focus();
 requestAnimationFrame(frame);
 

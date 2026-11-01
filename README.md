@@ -6,8 +6,17 @@ Everything is in one `index.html`: the art is drawn with canvas shapes, the soun
 
 ## Play
 
-- **Offline file:** download `index.html` and open it in any modern browser.
-- On a phone, add it to your home screen for a full-screen, app-like game.
+**https://0utpost89.github.io/pie-in-the-sky/**
+
+### Install it as an app
+
+- **Android (Chrome, Samsung Internet, Edge):** tap **INSTALL APP** at the bottom of the title screen, or use the browser menu's **Install app** / **Add to Home screen**.
+- **iPhone / iPad (Safari):** tap **Share**, then **Add to Home Screen**.
+- **Computer (Chrome / Edge):** click the install icon at the right of the address bar.
+
+Once installed it opens full-screen with Rolo's icon, and works offline. When you're online it always loads the latest version.
+
+You can also just download `index.html` and open it in a browser (installing and offline play need it served over the web, as on GitHub Pages).
 
 ## Controls
 
@@ -58,6 +67,12 @@ Every zone has the same four kinds, so you can read them at speed:
 5. The Black Hole Belt (7,000m onward)
 
 Drift into the middle of a black hole to go through to **Universe 2 (Yarn World)**, where he wears a bobble hat and the platforms are scarves, balls of wool and knitting needles. The next black hole leads to **Universe 3 (Dog World)**, where he goes undercover in a pair of floppy dog ears among kennels, tennis balls and frisbees. Then it's round again.
+
+## Files
+
+- `index.html`: the whole game
+- `manifest.webmanifest`, `sw.js`: what makes it installable and playable offline
+- `icons/`: the app icons, drawn from the game's own Rolo artwork. To redraw them after changing Rolo, run `node tools/make-icons.js` (needs Playwright with Chromium)
 
 ## Tweaking
 
