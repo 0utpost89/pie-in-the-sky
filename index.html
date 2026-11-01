@@ -3527,6 +3527,7 @@ function drawTitle() {
   const ls = Math.min(17, ...lines.map(([l]) => fitSize(l, 17, W - 30)));
   lines.forEach(([l, c], i) => drawText(l, W / 2, 284 + i * (ls + 9), ls, c));
   if (Math.sin(game.time * 5) > -0.3) drawText(isTouch ? 'Tap to start!' : 'Press SPACE or tap to start!', W / 2, 410, fitSize('Press SPACE or tap to start!', 24, W - 30), '#ffe066');
+  drawText(GAME_VERSION, W - 8, H - 10, 10, 'rgba(255,255,255,0.55)', 'right', false);
   if (game.best > 0) {
     const b = `Best: ${fmt(game.best)}${game.bestUniverse > 1 ? `  ·  reached Universe ${game.bestUniverse}` : ''}`;
     drawText(b, W / 2, 442, fitSize(b, 15, W - 30), '#fff6e8');
@@ -3704,6 +3705,7 @@ function render(alpha) {
 let lastTime = performance.now(), accumulator = 0;
 
 function frame(now) {
+  if (install.updateReady && game.state === 'title') { install.updateReady = false; location.reload(); return; }
   let dt = (now - lastTime) / 1000;
   lastTime = now;
   dt = clamp(dt, 0, CONFIG.maxFrameTime);
@@ -3721,7 +3723,9 @@ function frame(now) {
 // Installing as an app. The manifest and icons live next to index.html;
 // the service worker lets the installed game start offline. (Neither works
 // when the game is shown inside another page, or opened as a local file.)
+const GAME_VERSION = 'v1.1';    // shown small on the title screen; bump it with each release
 const install = {
+  updateReady: false,      // a newer version is waiting: reload when back on the title screen
   prompt: null,            // Chrome & co. hand us this when the game can be installed
   armed: false,
   standalone: (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone === true,
@@ -3736,7 +3740,17 @@ function installApp() {
   if (ev.userChoice) ev.userChoice.then(r => { if (r.outcome !== 'accepted') install.prompt = ev; }).catch(() => {});
 }
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && window.self === window.top) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  // Check for a new version on every launch, and whenever the app comes back
+  // from the background (installed apps often just resume, never reload).
+  const hadController = !!navigator.serviceWorker.controller;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then(reg => document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); }))
+      .catch(() => {});
+  });
+  // A new version has taken over: reload into it, but only on the title
+  // screen, never in the middle of a game.
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) install.updateReady = true; });
 }
 
 window.addEventListener('resize', resize);

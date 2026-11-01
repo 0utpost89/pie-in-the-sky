@@ -1,7 +1,8 @@
 // Sky Scratcher service worker: lets the installed game start offline.
-// Online, it always fetches the latest version first (so updates show up
-// straight away) and keeps a copy; offline, it plays the saved copy.
-const CACHE = 'sky-scratcher-v4';
+// Online, it always checks the server for the latest version first (so
+// updates show up straight away) and keeps a copy; offline, it plays the
+// saved copy.
+const CACHE = 'sky-scratcher-v1.1';   // bump with GAME_VERSION in index.html
 const FILES = [
   './',
   './index.html',
@@ -30,7 +31,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-cache' })      // always check with the server, skipping the phone's short-term cache
       .then(res => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
         return res;
